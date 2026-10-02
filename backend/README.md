@@ -18,7 +18,10 @@ backend/
 │   │   ├── Guesthouse.ts
 │   │   ├── Rating.ts
 │   │   └── User.ts
-│   ├── routes/authRoutes.ts
+│   ├── routes/
+│   │   ├── authRoutes.ts
+│   │   └── guesthouseRoutes.ts
+│   ├── middleware/authMiddleware.ts
 │   └── server.ts
 ├── .env.example
 ├── package.json
@@ -100,3 +103,23 @@ role. The guards are reusable for the respective admin and customer routes.
 Validation checks that the referenced guesthouse exists and the referenced user
 has the customer role. A unique compound index on `(customerId, guesthouseId)`
 prevents a customer from rating the same guesthouse more than once.
+
+## Guesthouse API
+
+Guesthouse routes are mounted at `/api/guesthouses`:
+
+| Method | Path | Access |
+| --- | --- | --- |
+| `GET` | `/api/guesthouses` | Public; returns active listings |
+| `GET` | `/api/guesthouses/:id` | Public; returns an active listing |
+| `POST` | `/api/guesthouses` | Admin only |
+| `PUT` | `/api/guesthouses/:id` | Admin only |
+| `DELETE` | `/api/guesthouses/:id` | Admin only |
+
+Create and update accept guesthouse fields from the model. The API always sets
+`createdBy` from the authenticated admin and does not accept verification
+metadata from request bodies. Model validation runs on create and update;
+invalid input returns `400`, and missing listings return `404`. Delete
+deactivates a listing (`isActive: false`) so existing ratings can continue to
+reference it; inactive listings are omitted from public reads. An admin can
+reactivate a listing by setting `isActive: true` in a `PUT` request.
