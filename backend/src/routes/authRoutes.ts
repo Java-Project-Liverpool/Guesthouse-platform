@@ -1,5 +1,8 @@
 import { Router, type Request, type Response } from "express";
 import mongoose from "mongoose";
+import jwt from "jsonwebtoken";
+import { getJwtSecret } from "../config/jwt";
+import { authenticate } from "../middleware/authMiddleware";
 import User from "../models/User";
 
 const router = Router();
@@ -71,6 +74,51 @@ router.post("/register", async (req: Request, res: Response) => {
     console.error("Customer registration failed.", error);
     return res.status(500).json({ message: "Could not create account." });
   }
+});
+
+router.post("/login", async (req: Request, res: Response) => {
+  const body: unknown = req.body;
+
+  if (body === null || typeof body !== "object" || Array.isArray(body)) {
+    return res.status(400).json({ message: "Request body must be a JSON object." });
+  }
+
+  const { email, password } = body as Record<string, unknown>;
+  if (typeof email !== "string" || typeof password !== "string") {
+    return res.status(400).json({ message: "Email and password are required as strings." });
+  }
+
+  try {
+    const user = await User.findOne({ email: email.trim().toLowerCase() }).select("+passwordHash");
+    const passwordMatches = user ? await user.comparePassword(password) : false;
+
+    if (!user || !passwordMatches) {
+      return res.status(401).json({ message: "Invalid email or password." });
+    }
+
+    const token = jwt.sign(
+      { role: user.role },
+      getJwtSecret(),
+      { algorithm: "HS256", subject: user.id, expiresIn: "1h" }
+    );
+
+    return res.status(200).json({
+      token,
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        role: user.role
+      }
+    });
+  } catch (error) {
+    console.error("User login failed.", error);
+    return res.status(500).json({ message: "Could not authenticate account." });
+  }
+});
+
+router.get("/me", authenticate, (req: Request, res: Response) => {
+  return res.json({ user: req.authenticatedUser });
 });
 
 export default router;

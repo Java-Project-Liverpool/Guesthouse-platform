@@ -35,8 +35,9 @@ npm install
 cp .env.example .env
 ```
 
-Set `MONGODB_URI` in `.env` to your MongoDB connection string. Start the
-development server with:
+Set `MONGODB_URI` in `.env` to your MongoDB connection string and set
+`JWT_SECRET` to a cryptographically random value of at least 32 bytes. Do not
+commit the `.env` file. Start the development server with:
 
 ```bash
 npm run dev
@@ -70,6 +71,27 @@ defaulting to `customer`.
 assign an admin role or choose an authentication provider. Successful requests
 return `201` with the new user and never include its password hash. Invalid input
 returns `400`, and an email already in use returns `409`.
+
+## Login and route authorization
+
+`POST /api/auth/login` accepts `email` and `password`. Successful logins return
+a signed HS256 bearer token that expires after one hour and a safe user object.
+Invalid credentials return `401` with a generic response. Send the token in the
+`Authorization: Bearer <token>` header. `GET /api/auth/me` verifies the token
+and returns its user ID and role; missing, invalid, and expired tokens are
+rejected with `401`.
+
+Route handlers can use the middleware in `src/middleware/authMiddleware.ts`:
+
+```ts
+router.get("/admin/resource", authenticate, requireAdmin, handler);
+router.post("/customer/resource", authenticate, requireCustomer, handler);
+```
+
+`authenticate` verifies the token signature and expiry and sets
+`req.authenticatedUser`. `requireAdmin` and `requireCustomer` require the
+matching signed role and return `403` for an authenticated user with the wrong
+role. The guards are reusable for the respective admin and customer routes.
 
 ## Ratings and reviews
 
