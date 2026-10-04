@@ -14,6 +14,7 @@ function isDuplicateKeyError(error: unknown): error is { code: number } {
   );
 }
 
+// Only a signed-in admin may add another admin account.
 router.post("/users", authenticate, requireAdmin, async (req: Request, res: Response) => {
   const body: unknown = req.body;
 
@@ -21,6 +22,7 @@ router.post("/users", authenticate, requireAdmin, async (req: Request, res: Resp
     return res.status(400).json({ message: "Request body must be a JSON object." });
   }
 
+  // Deliberately read only these fields; callers cannot choose their own role or provider.
   const { name, email, password } = body as Record<string, unknown>;
   if (
     typeof name !== "string" ||
@@ -32,6 +34,7 @@ router.post("/users", authenticate, requireAdmin, async (req: Request, res: Resp
     });
   }
 
+  // Match the User model's lowercase email format before checking for duplicates.
   const normalizedEmail = email.trim().toLowerCase();
 
   try {
@@ -40,6 +43,7 @@ router.post("/users", authenticate, requireAdmin, async (req: Request, res: Resp
       return res.status(409).json({ message: "An account with this email already exists." });
     }
 
+    // The User model hashes this password before saving; the role is assigned here.
     const admin = new User({
       name,
       email: normalizedEmail,
@@ -48,6 +52,7 @@ router.post("/users", authenticate, requireAdmin, async (req: Request, res: Resp
       authProvider: "local"
     });
 
+    // The unique email index also protects against two requests racing past the check above.
     await admin.save();
 
     return res.status(201).json({
