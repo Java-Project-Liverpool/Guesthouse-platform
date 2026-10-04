@@ -6,6 +6,7 @@ import connectDB from "./config/database";
 import adminRoutes from "./routes/adminRoutes";
 import authRoutes from "./routes/authRoutes";
 import guesthouseRoutes from "./routes/guesthouseRoutes";
+import favouriteRoutes from "./routes/favouriteRoutes";
 
 dotenv.config();
 
@@ -26,6 +27,7 @@ app.use(express.json());
 app.use("/api/admin", adminRoutes);
 app.use("/api/auth", authRoutes);
 app.use("/api/guesthouses", guesthouseRoutes);
+app.use("/api/favourites", favouriteRoutes);
 
 // Render checks /health; retain the API-prefixed path for existing clients.
 app.get(["/health", "/api/health"], (_req, res) => {
