@@ -40,11 +40,21 @@ cp .env.example .env
 
 Set `MONGODB_URI` in `.env` to your MongoDB connection string and set
 `JWT_SECRET` to a cryptographically random value of at least 32 bytes. Do not
-commit the `.env` file. Start the development server with:
+commit the `.env` file. Set `CORS_ORIGIN` to a comma-separated list of allowed
+web client origins; local development defaults to the Vite and Expo web origins.
+Start the development server with:
 
 ```bash
 npm run dev
 ```
+
+## Render configuration
+
+For a Render web service, set the root directory to `backend`, the build command
+to `npm ci && npm run build`, and the start command to `npm start`. Configure
+`MONGODB_URI`, `JWT_SECRET`, and `CORS_ORIGIN` in the Render environment. Use
+`/health` as the health check path. The endpoint returns `200` when MongoDB is
+connected and `503` while it is unavailable.
 
 ## User model
 
