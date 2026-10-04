@@ -142,25 +142,36 @@ export const deleteGuesthouse = async (
 /*
  * Escape special characters so user input is treated as plain text
  * when it is used inside a regular expression.
+ *
+ * Without this, a search for "a.b" or "(" could behave unexpectedly
+ * or cause an error, because those characters have special meanings.
  */
 const escapeRegex = (text: string): string =>
   text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
+/*
+ * The options a client can send to the search endpoint.
+ * Every field is optional, so a search can use any combination of them.
+ */
 export interface GuesthouseSearchParams {
-  name?: string;
-  city?: string;
-  minPrice?: number;
-  maxPrice?: number;
-  minRating?: number;
-  amenities?: string[];
-  verified?: boolean;
-  sortBy?: string;
-  page?: number;
-  limit?: number;
+  name?: string; // Part of the guesthouse name
+  city?: string; // Part of the city name
+  minPrice?: number; // Lowest price per night
+  maxPrice?: number; // Highest price per night
+  minRating?: number; // Lowest average rating (0 to 5)
+  amenities?: string[]; // Amenities the guesthouse must have
+  verified?: boolean; // Only show verified guesthouses
+  sortBy?: string; // One of the keys in searchSortOptions below
+  page?: number; // Which page of results to return
+  limit?: number; // How many results per page
 }
 
 /*
- * Supported sort options. Cheapest first (price_asc) is the default.
+ * The sort options the client can choose with sortBy.
+ * 1 means smallest first (ascending) and -1 means largest first (descending).
+ *
+ * price_asc is the default, so the cheapest guesthouses come first.
+ * budget_friendly currently sorts the same way as price_asc.
  */
 const searchSortOptions: Record<string, Record<string, 1 | -1>> = {
   price_asc: { pricePerNight: 1 },
@@ -168,6 +179,7 @@ const searchSortOptions: Record<string, Record<string, 1 | -1>> = {
   rating_asc: { averageRating: 1 },
   rating_desc: { averageRating: -1 },
   recent: { createdAt: -1 },
+  // If two guesthouses have the same average, the one with more ratings comes first
   highly_rated: { averageRating: -1, ratingsCount: -1 },
   budget_friendly: { pricePerNight: 1 }
 };
@@ -177,8 +189,12 @@ const searchSortOptions: Record<string, Record<string, 1 | -1>> = {
  *
  * Ratings are stored in their own collection, so the average rating and
  * the number of ratings are calculated here and attached to each result.
+ *
+ * The query is built as an aggregation pipeline, which is a list of
+ * stages that the data passes through one after the other.
  */
 export const searchGuesthouses = async (params: GuesthouseSearchParams) => {
+  // Read the options and set a default for any that were not sent
   const {
     name,
     city,
@@ -187,48 +203,59 @@ export const searchGuesthouses = async (params: GuesthouseSearchParams) => {
     minRating,
     amenities,
     verified = false,
-    sortBy = "price_asc",
+    sortBy = "price_asc", // Cheapest first unless the client asks otherwise
     page = 1,
     limit = 20
   } = params;
 
+  // Look up the sort order, and reject a sortBy value we do not support
   const sort = searchSortOptions[sortBy];
 
   if (!sort) {
     throw new Error("Invalid sortBy option.");
   }
 
+  // Start with the rule every search follows: hide inactive guesthouses
   const match: Record<string, any> = { isActive: true };
 
+  // Name search: matches part of the name and ignores upper/lower case
   if (name) {
     match.name = { $regex: escapeRegex(name), $options: "i" };
   }
 
+  // City search: matches part of the city name and ignores case
   if (city) {
     match.city = { $regex: escapeRegex(city), $options: "i" };
   }
 
+  // Price filter: add a lower limit, an upper limit, or both
   if (minPrice !== undefined || maxPrice !== undefined) {
     const priceFilter: Record<string, number> = {};
 
-    if (minPrice !== undefined) priceFilter.$gte = minPrice;
-    if (maxPrice !== undefined) priceFilter.$lte = maxPrice;
+    if (minPrice !== undefined) priceFilter.$gte = minPrice; // greater than or equal
+    if (maxPrice !== undefined) priceFilter.$lte = maxPrice; // less than or equal
 
     match.pricePerNight = priceFilter;
   }
 
+  // Amenities filter: the guesthouse must have every amenity listed.
+  // Each one is matched exactly but ignoring case, so "WiFi" finds "wifi".
   if (amenities && amenities.length > 0) {
     match.amenities = {
       $all: amenities.map((a) => new RegExp(`^${escapeRegex(a)}$`, "i"))
     };
   }
 
+  // Verified filter: only guesthouses whose status is "verified"
   if (verified) {
     match.verificationStatus = "verified";
   }
 
   const pipeline: mongoose.PipelineStage[] = [
+    // Stage 1: keep only the guesthouses that pass the filters above
     { $match: match },
+
+    // Stage 2: attach each guesthouse's ratings from the ratings collection
     {
       $lookup: {
         from: Rating.collection.name,
@@ -237,6 +264,9 @@ export const searchGuesthouses = async (params: GuesthouseSearchParams) => {
         as: "ratingsData"
       }
     },
+
+    // Stage 3: work out the number of ratings and the average rating.
+    // A guesthouse with no ratings gets an average of 0.
     {
       $addFields: {
         ratingsCount: { $size: "$ratingsData" },
@@ -247,29 +277,38 @@ export const searchGuesthouses = async (params: GuesthouseSearchParams) => {
     }
   ];
 
+  // The rating filter can only run now, because averageRating
+  // did not exist until stage 3 calculated it
   if (minRating !== undefined) {
     pipeline.push({ $match: { averageRating: { $gte: minRating } } });
   }
 
   pipeline.push(
+    // Sort the results. Sorting by _id last keeps the order the same
+    // every time when two guesthouses are equal on the main sort.
     { $sort: { ...sort, _id: 1 } },
+
+    // Run two small queries on the same sorted results at once:
+    // one gets the requested page, the other counts all matches
     {
       $facet: {
         guesthouses: [
-          { $skip: (page - 1) * limit },
-          { $limit: limit },
-          { $project: { ratingsData: 0 } }
+          { $skip: (page - 1) * limit }, // skip the earlier pages
+          { $limit: limit }, // keep one page of results
+          { $project: { ratingsData: 0 } } // do not send the raw ratings back
         ],
-        total: [{ $count: "count" }]
+        total: [{ $count: "count" }] // total matches across all pages
       }
     }
   );
 
+  // Run the pipeline against the guesthouses collection
   const [result] = await Guesthouse.aggregate<{
     guesthouses: unknown[];
     total: { count: number }[];
   }>(pipeline);
 
+  // If nothing matched, the count list is empty, so the total is 0
   return {
     guesthouses: result.guesthouses,
     total: result.total[0]?.count ?? 0,

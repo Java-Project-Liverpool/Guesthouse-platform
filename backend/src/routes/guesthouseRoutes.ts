@@ -2,6 +2,7 @@ import { Router, type Request, type Response } from "express";
 import mongoose from "mongoose";
 import { authenticate, requireAdmin } from "../middleware/authMiddleware";
 import Guesthouse from "../models/Guesthouse";
+// The search logic lives in the service file; this file only handles the request
 import {
   searchGuesthouses,
   type GuesthouseSearchParams
@@ -35,6 +36,14 @@ function pickWritableFields(body: Record<string, unknown>): Record<string, unkno
   );
 }
 
+/*
+ * Turn a query string value into a number.
+ *
+ * Values in a URL always arrive as text, so "500" has to be converted.
+ * Returns undefined if the value was not sent or is empty.
+ * Returns NaN if the value was sent but is not a number (for example "abc"),
+ * which the search route checks for below.
+ */
 function parseOptionalNumber(value: unknown): number | undefined {
   if (typeof value !== "string" || value.trim() === "") {
     return undefined;
@@ -61,13 +70,28 @@ router.get("/", async (_req: Request, res: Response) => {
   }
 });
 
+/*
+ * GET /api/guesthouses/search
+ *
+ * Search, filter and sort guesthouses. All options are optional and go in the
+ * URL, for example:
+ *   /api/guesthouses/search?city=Gaborone&maxPrice=500&sortBy=rating_desc
+ *
+ * Options: name, city, minPrice, maxPrice, minRating, amenities (comma
+ * separated), verified (true), sortBy, page, limit.
+ *
+ * This route must stay above "/:id" below. Otherwise Express would treat the
+ * word "search" as a guesthouse ID and this route would never run.
+ */
 router.get("/search", async (req: Request, res: Response) => {
+  // Convert the number options from text to numbers
   const minPrice = parseOptionalNumber(req.query.minPrice);
   const maxPrice = parseOptionalNumber(req.query.maxPrice);
   const minRating = parseOptionalNumber(req.query.minRating);
   const page = parseOptionalNumber(req.query.page);
   const limit = parseOptionalNumber(req.query.limit);
 
+  // Reject the request if any of those values was sent but is not a number
   const numericValues = [minPrice, maxPrice, minRating, page, limit];
   if (numericValues.some((value) => value !== undefined && Number.isNaN(value))) {
     return res.status(400).json({
@@ -75,14 +99,17 @@ router.get("/search", async (req: Request, res: Response) => {
     });
   }
 
+  // Ratings are from 0 to 5, so anything outside that range is a mistake
   if (minRating !== undefined && (minRating < 0 || minRating > 5)) {
     return res.status(400).json({ message: "minRating must be between 0 and 5." });
   }
 
+  // Pages and result counts start at 1
   if ((page !== undefined && page < 1) || (limit !== undefined && limit < 1)) {
     return res.status(400).json({ message: "page and limit must be at least 1." });
   }
 
+  // Collect only the options that were actually sent
   const params: GuesthouseSearchParams = {};
 
   if (typeof req.query.name === "string" && req.query.name.trim() !== "") {
@@ -93,6 +120,7 @@ router.get("/search", async (req: Request, res: Response) => {
     params.city = req.query.city.trim();
   }
 
+  // Amenities arrive as one text value like "wifi,pool", so split it into a list
   if (typeof req.query.amenities === "string" && req.query.amenities.trim() !== "") {
     params.amenities = req.query.amenities
       .split(",")
@@ -104,6 +132,7 @@ router.get("/search", async (req: Request, res: Response) => {
     params.sortBy = req.query.sortBy.trim();
   }
 
+  // The verified filter is only switched on by the exact text "true"
   if (req.query.verified === "true") {
     params.verified = true;
   }
@@ -112,16 +141,20 @@ router.get("/search", async (req: Request, res: Response) => {
   if (maxPrice !== undefined) params.maxPrice = maxPrice;
   if (minRating !== undefined) params.minRating = minRating;
   if (page !== undefined) params.page = page;
+  // Cap the page size at 100 so one request cannot ask for everything
   if (limit !== undefined) params.limit = Math.min(limit, 100);
 
   try {
+    // Hand the options to the service, which builds and runs the query
     const result = await searchGuesthouses(params);
     return res.json(result);
   } catch (error) {
+    // An unknown sortBy value is the client's mistake, so answer with 400
     if (error instanceof Error && error.message === "Invalid sortBy option.") {
       return res.status(400).json({ message: error.message });
     }
 
+    // Anything else is an unexpected problem on the server
     console.error("Could not search guesthouses.", error);
     return res.status(500).json({ message: "Could not search guesthouses." });
   }
