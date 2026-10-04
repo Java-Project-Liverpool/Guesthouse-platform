@@ -106,6 +106,13 @@ router.post("/customer/resource", authenticate, requireCustomer, handler);
 matching signed role and return `403` for an authenticated user with the wrong
 role. The guards are reusable for the respective admin and customer routes.
 
+An authenticated admin can create another local admin with
+`POST /api/admin/users` and a JSON body containing `name`, `email`, and
+`password`. The endpoint always assigns the admin role, hashes the password
+through the User model, returns `409` for an existing email, and never returns
+the password hash. Missing authentication returns `401`; a customer token
+returns `403`.
+
 ## Ratings and reviews
 
 `src/models/Rating.ts` maps to the `ratings` collection and stores `guesthouseId`,

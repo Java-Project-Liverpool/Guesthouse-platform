@@ -3,6 +3,7 @@ import cors from "cors";
 import dotenv from "dotenv";
 import mongoose from "mongoose";
 import connectDB from "./config/database";
+import adminRoutes from "./routes/adminRoutes";
 import authRoutes from "./routes/authRoutes";
 import guesthouseRoutes from "./routes/guesthouseRoutes";
 
@@ -21,6 +22,7 @@ app.use(cors({
   }
 }));
 app.use(express.json());
+app.use("/api/admin", adminRoutes);
 app.use("/api/auth", authRoutes);
 app.use("/api/guesthouses", guesthouseRoutes);
 
