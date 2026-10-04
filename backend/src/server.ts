@@ -3,6 +3,7 @@ import cors from "cors";
 import dotenv from "dotenv";
 import mongoose from "mongoose";
 import connectDB from "./config/database";
+import adminRoutes from "./routes/adminRoutes";
 import authRoutes from "./routes/authRoutes";
 import guesthouseRoutes from "./routes/guesthouseRoutes";
 
@@ -21,9 +22,12 @@ app.use(cors({
   }
 }));
 app.use(express.json());
+// Keep admin account management under the JWT and admin-role guards in its router.
+app.use("/api/admin", adminRoutes);
 app.use("/api/auth", authRoutes);
 app.use("/api/guesthouses", guesthouseRoutes);
 
+// Render checks /health; retain the API-prefixed path for existing clients.
 app.get(["/health", "/api/health"], (_req, res) => {
   const databaseConnected = mongoose.connection.readyState === 1;
   return res.status(databaseConnected ? 200 : 503).json({
@@ -36,6 +40,7 @@ app.use((_req, res) => {
   return res.status(404).json({ message: "Route not found." });
 });
 
+// Keep parser and unexpected server errors in the same JSON response format as the API.
 app.use((error: unknown, _req: Request, res: Response, next: NextFunction) => {
   if (res.headersSent) {
     return next(error);
@@ -51,6 +56,7 @@ app.use((error: unknown, _req: Request, res: Response, next: NextFunction) => {
 
 connectDB();
 
+// Bind all interfaces so the hosting platform's proxy can reach the server.
 app.listen(PORT, "0.0.0.0", () => {
   console.log(`Server running on port ${PORT}`);
 });
