@@ -7,6 +7,10 @@ import adminRoutes from "./routes/adminRoutes";
 import authRoutes from "./routes/authRoutes";
 import guesthouseRoutes from "./routes/guesthouseRoutes";
 import favouriteRoutes from "./routes/favouriteRoutes";
+import favouriteCollectionRoutes from "./routes/favouriteCollectionRoutes";
+import comparisonRoutes from "./routes/comparisonRoutes";
+import searchHistoryRoutes from "./routes/searchHistoryRoutes";
+
 
 dotenv.config();
 
@@ -28,6 +32,10 @@ app.use("/api/admin", adminRoutes);
 app.use("/api/auth", authRoutes);
 app.use("/api/guesthouses", guesthouseRoutes);
 app.use("/api/favourites", favouriteRoutes);
+app.use("/api/favourite-collections", favouriteCollectionRoutes);
+app.use("/api/comparisons", comparisonRoutes);
+app.use("/api/search-history", searchHistoryRoutes);
+
 
 // Render checks /health; retain the API-prefixed path for existing clients.
 app.get(["/health", "/api/health"], (_req, res) => {
