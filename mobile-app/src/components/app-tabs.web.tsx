@@ -7,6 +7,7 @@ import {
   TabListProps,
 } from 'expo-router/ui';
 import { SymbolView } from 'expo-symbols';
+import { usePathname } from 'expo-router';
 import { Pressable, useColorScheme, View, StyleSheet } from 'react-native';
 
 import { ExternalLink } from './external-link';
@@ -27,6 +28,7 @@ export default function AppTabs() {
           <TabTrigger name="explore" href="/explore" asChild>
             <TabButton>Explore</TabButton>
           </TabTrigger>
+                    <TabTrigger name="login" href="/login" style={{ display: 'none' }} />
         </CustomTabList>
       </TabList>
     </Tabs>
@@ -50,9 +52,11 @@ export function TabButton({ children, isFocused, ...props }: TabTriggerSlotProps
 export function CustomTabList(props: TabListProps) {
   const scheme = useColorScheme();
   const colors = Colors[scheme === 'unspecified' ? 'light' : scheme];
+  const pathname = usePathname();
 
   return (
-    <View {...props} style={styles.tabListContainer}>
+    <View{...props}
+      style={[styles.tabListContainer, pathname === '/login' && { display: 'none' }]}>
       <ThemedView type="backgroundElement" style={styles.innerContainer}>
         <ThemedText type="smallBold" style={styles.brandText}>
           Expo Starter
