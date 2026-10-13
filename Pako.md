@@ -92,3 +92,17 @@ This document records the guesthouse project work completed with Pako on the `Pa
 - Used the existing TypeScript build and CI scripts to check the relevant changes; when a task requested tests, ran the applicable checks and investigated failures instead of suppressing them.
 - Kept changes within the backend, workflow, and documentation scope of the requested tasks.
 - Did not deploy the application as part of these tasks.
+
+## Task #28 — Complete Guesthouse Discovery API
+
+- Branch: Pako-S (merged origin/main updates: 10 commits including Comparison, FavouriteCollection, Notification, SearchHistory models)
+- Fixed `backend/src/services/guesthouseService.ts`: added `most_favourited` sort option and `$lookup`/`$addFields` for favourites count from `FavouriteCollection` model
+- Added `FavouriteCollection` import
+- TypeScript build (`npm run build`) passed with no errors
+- API tested at `http://localhost:5000/api/guesthouses/search`:
+  - `sortBy=price_asc` returns empty result (DB empty — expected)
+  - `sortBy=most_favourited` now accepted (was returning `Invalid sortBy option.` due to stale `dist/`)
+  - `sortBy=invalid_sort` correctly rejected
+  - Rebuilt `dist/` and restarted server
+- All 28 changed files reviewed: mostly explanatory comment additions from prior session + intended service edit; no secrets or unrelated changes
+- Awaiting: commit, push to Pako-S, pull request to main

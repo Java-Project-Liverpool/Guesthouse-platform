@@ -2,6 +2,7 @@ import mongoose from "mongoose";
 import Guesthouse, { IGuesthouse } from "../models/Guesthouse";
 import User from "../models/User";
 import Rating from "../models/Rating";
+import FavouriteCollection from "../models/FavouriteCollection";
 
 /*
  * Check whether a string is a valid MongoDB ObjectId.
@@ -169,7 +170,8 @@ const searchSortOptions: Record<string, Record<string, 1 | -1>> = {
   rating_desc: { averageRating: -1 },
   recent: { createdAt: -1 },
   highly_rated: { averageRating: -1, ratingsCount: -1 },
-  budget_friendly: { pricePerNight: 1 }
+  budget_friendly: { pricePerNight: 1 },
+  most_favourited: { favouritesCount: -1, averageRating: -1 }
 };
 
 /*
@@ -244,6 +246,30 @@ export const searchGuesthouses = async (params: GuesthouseSearchParams) => {
           $round: [{ $ifNull: [{ $avg: "$ratingsData.rating" }, 0] }, 1]
         }
       }
+    },
+    {
+      $lookup: {
+        from: FavouriteCollection.collection.name,
+        localField: "_id",
+        foreignField: "guesthouseIds",
+        as: "favouritesData"
+      }
+    },
+    {
+      $addFields: {
+        favouritesCount: {
+          $sum: {
+            $map: {
+              input: "$favouritesData",
+              as: "f",
+              in: { $size: "$$f.guesthouseIds" }
+            }
+          }
+        }
+      }
+    },
+    {
+      $project: { ratingsData: 0, favouritesData: 0 }
     }
   ];
 
