@@ -27,7 +27,11 @@ export default function AppTabs() {
           renderingMode="template"
         />
       </NativeTabs.Trigger>
-            <NativeTabs.Trigger name="login" hidden />
+
+      {/* Screens that are not tabs */}
+      <NativeTabs.Trigger name="login" hidden />
+      <NativeTabs.Trigger name="details" hidden />
+      <NativeTabs.Trigger name="search" hidden />
     </NativeTabs>
   );
 }

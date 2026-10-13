@@ -6,8 +6,8 @@ import {
   TabTriggerSlotProps,
   TabListProps,
 } from 'expo-router/ui';
-import { SymbolView } from 'expo-symbols';
 import { usePathname } from 'expo-router';
+import { SymbolView } from 'expo-symbols';
 import { Pressable, useColorScheme, View, StyleSheet } from 'react-native';
 
 import { ExternalLink } from './external-link';
@@ -28,7 +28,10 @@ export default function AppTabs() {
           <TabTrigger name="explore" href="/explore" asChild>
             <TabButton>Explore</TabButton>
           </TabTrigger>
-                    <TabTrigger name="login" href="/login" style={{ display: 'none' }} />
+          {/* Screens that are not tabs */}
+          <TabTrigger name="login" href="/login" style={{ display: 'none' }} />
+          <TabTrigger name="details" href="/details" style={{ display: 'none' }} />
+          <TabTrigger name="search" href="/search" style={{ display: 'none' }} />
         </CustomTabList>
       </TabList>
     </Tabs>
@@ -53,10 +56,13 @@ export function CustomTabList(props: TabListProps) {
   const scheme = useColorScheme();
   const colors = Colors[scheme === 'unspecified' ? 'light' : scheme];
   const pathname = usePathname();
+  // Hide the starter bar on screens that are not tabs
+  const hideBar = ['/login', '/details', '/search'].includes(pathname);
 
   return (
-    <View{...props}
-      style={[styles.tabListContainer, pathname === '/login' && { display: 'none' }]}>
+    <View
+      {...props}
+      style={[styles.tabListContainer, hideBar && { display: 'none' }]}>
       <ThemedView type="backgroundElement" style={styles.innerContainer}>
         <ThemedText type="smallBold" style={styles.brandText}>
           Expo Starter
@@ -113,7 +119,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    gap: Spacing.one,
+    gap: Spacing.two,
     marginLeft: Spacing.three,
   },
 });
