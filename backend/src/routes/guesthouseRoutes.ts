@@ -218,6 +218,69 @@ router.put("/:id", authenticate, requireAdmin, async (req: Request, res: Respons
   }
 });
 
+
+router.patch("/:id/verification", authenticate, requireAdmin, async (req: Request, res: Response) => {
+  if (!mongoose.isObjectIdOrHexString(req.params.id)) {
+    return res.status(400).json({ message: "Guesthouse ID is invalid." });
+  }
+if (!isRequestObject(req.body)) {
+  return res.status(400).json({
+    message: "Request body must be a JSON object."
+  });
+}
+  const { verificationStatus } = req.body;
+
+  const allowedStatuses = ["pending", "verified", "needs_review"];
+
+  if (
+    typeof verificationStatus !== "string" ||
+    !allowedStatuses.includes(verificationStatus)
+  ) {
+    return res.status(400).json({
+      message: "verificationStatus must be pending, verified, or needs_review."
+    });
+  }
+
+  try {
+    const verificationUpdates: {
+      verificationStatus: string;
+      verifiedBy?: mongoose.Types.ObjectId | null;
+      verifiedAt?: Date | null;
+    } = {
+      verificationStatus
+    };
+
+    if (verificationStatus === "verified") {
+      verificationUpdates.verifiedBy = new mongoose.Types.ObjectId(
+        req.authenticatedUser!.id
+      );
+      verificationUpdates.verifiedAt = new Date();
+    } else {
+      verificationUpdates.verifiedBy = null;
+      verificationUpdates.verifiedAt = null;
+    }
+
+    const guesthouse = await Guesthouse.findByIdAndUpdate(
+      req.params.id,
+      { $set: verificationUpdates },
+      { new: true, runValidators: true }
+    );
+
+    if (!guesthouse) {
+      return res.status(404).json({ message: "Guesthouse not found." });
+    }
+
+    return res.json({ guesthouse });
+  } catch (error) {
+    console.error("Could not update guesthouse verification.", error);
+    return res.status(500).json({
+      message: "Could not update guesthouse verification."
+    });
+  }
+});
+
+
+
 router.delete("/:id", authenticate, requireAdmin, async (req: Request, res: Response) => {
   if (!mongoose.isObjectIdOrHexString(req.params.id)) {
     return res.status(400).json({ message: "Guesthouse ID is invalid." });

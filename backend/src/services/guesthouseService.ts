@@ -2,7 +2,7 @@ import mongoose from "mongoose";
 import Guesthouse, { IGuesthouse } from "../models/Guesthouse";
 import User from "../models/User";
 import Rating from "../models/Rating";
-import FavouriteCollection from "../models/FavouriteCollection";
+import Favourite from "../models/Favourite";
 
 /*
  * Check whether a string is a valid MongoDB ObjectId.
@@ -249,25 +249,20 @@ export const searchGuesthouses = async (params: GuesthouseSearchParams) => {
     },
     {
       $lookup: {
-        from: FavouriteCollection.collection.name,
+        from: Favourite.collection.name,
         localField: "_id",
-        foreignField: "guesthouseIds",
+        foreignField: "guesthouseId",
         as: "favouritesData"
       }
     },
     {
       $addFields: {
         favouritesCount: {
-          $sum: {
-            $map: {
-              input: "$favouritesData",
-              as: "f",
-              in: { $size: "$$f.guesthouseIds" }
-            }
-          }
+          $size: "$favouritesData"
         }
       }
     },
+
     {
       $project: { ratingsData: 0, favouritesData: 0 }
     }
@@ -296,8 +291,133 @@ export const searchGuesthouses = async (params: GuesthouseSearchParams) => {
     total: { count: number }[];
   }>(pipeline);
 
+
+  const discoveryStats = await Guesthouse.aggregate<{
+    _id: mongoose.Types.ObjectId;
+    pricePerNight: number;
+    createdAt: Date;
+    verificationStatus: string;
+    ratingsCount: number;
+    averageRating: number;
+    favouritesCount: number;
+  }>([
+    { $match: { isActive: true } },
+    {
+      $lookup: {
+        from: Rating.collection.name,
+        localField: "_id",
+        foreignField: "guesthouseId",
+        as: "ratingsData"
+      }
+    },
+    {
+      $addFields: {
+        ratingsCount: { $size: "$ratingsData" },
+        averageRating: {
+          $round: [{ $ifNull: [{ $avg: "$ratingsData.rating" }, 0] }, 1]
+        }
+      }
+    },
+    {
+      $lookup: {
+        from: Favourite.collection.name,
+        localField: "_id",
+        foreignField: "guesthouseId",
+        as: "favouritesData"
+      }
+    },
+    {
+      $addFields: {
+        favouritesCount: { $size: "$favouritesData" }
+      }
+    },
+    {
+      $project: {
+        pricePerNight: 1,
+        createdAt: 1,
+        verificationStatus: 1,
+        ratingsCount: 1,
+        averageRating: 1,
+        favouritesCount: 1
+      }
+    }
+  ]);
+
+  const prices = discoveryStats
+    .map((guesthouse) => guesthouse.pricePerNight)
+    .sort((a, b) => a - b);
+
+  const middle = Math.floor(prices.length / 2);
+
+  const medianPrice =
+    prices.length === 0
+      ? 0
+      : prices.length % 2 === 0
+        ? (prices[middle - 1] + prices[middle]) / 2
+        : prices[middle];
+
+  const mostFavouritedIds = new Set(
+    [...discoveryStats]
+      .filter((guesthouse) => guesthouse.favouritesCount > 0)
+      .sort((a, b) => b.favouritesCount - a.favouritesCount)
+      .slice(0, 10)
+      .map((guesthouse) => guesthouse._id.toString())
+  );
+
+  const recentCutoff = new Date();
+  recentCutoff.setDate(recentCutoff.getDate() - 30);
+
+  const statsById = new Map(
+    discoveryStats.map((guesthouse) => [
+      guesthouse._id.toString(),
+      guesthouse
+    ])
+  );
+
+  const guesthousesWithBadges = (
+    result.guesthouses as Array<Record<string, any>>
+  ).map((guesthouse) => {
+    const stats = statsById.get(String(guesthouse._id));
+
+    const badges: string[] = [];
+
+    if (stats) {
+      if (stats.averageRating >= 4.5 && stats.ratingsCount >= 3) {
+        badges.push("Highly Rated");
+      }
+
+      if (
+        prices.length > 0 &&
+        stats.pricePerNight <= medianPrice
+      ) {
+        badges.push("Budget Friendly");
+      }
+
+      if (new Date(stats.createdAt) >= recentCutoff) {
+        badges.push("Recently Added");
+      }
+
+      if (mostFavouritedIds.has(String(guesthouse._id))) {
+        badges.push("Most Favourited");
+      }
+
+      if (stats.verificationStatus === "verified") {
+        badges.push("Verified Guesthouse");
+      }
+
+      if (
+        (stats.ratingsCount >= 5 && stats.averageRating >= 4) ||
+        stats.favouritesCount >= 10
+      ) {
+        badges.push("Popular");
+      }
+    }
+
+    return { ...guesthouse, badges };
+  });
+
   return {
-    guesthouses: result.guesthouses,
+    guesthouses: guesthousesWithBadges,
     total: result.total[0]?.count ?? 0,
     page,
     limit
