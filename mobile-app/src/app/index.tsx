@@ -15,6 +15,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useStays } from '@/data/stays';
+import { useFavourites } from '@/data/favourites';
 
 const colors = {
   background: '#F7F5F0',
@@ -87,10 +88,7 @@ export default function HomeScreen() {
   const [city, setCity] = useState('All');
   const [sort, setSort] = useState<'cheapest' | 'rated'>('cheapest');
   const [query, setQuery] = useState('');
-  const [saved, setSaved] = useState<string[]>([]);
-
-  const toggleSaved = (id: string) =>
-    setSaved((current) => (current.includes(id) ? current.filter((x) => x !== id) : [...current, id]));
+    const { saved, toggleSaved } = useFavourites();
 
   const openStay = (id: string) => router.push({ pathname: '/details', params: { id } });
 
@@ -340,7 +338,7 @@ const styles = StyleSheet.create({
 
   // Cards
   photo: { borderRadius: 20, marginBottom: 12, overflow: 'hidden' },
-  photoImage: { ...StyleSheet.absoluteFillObject },
+  photoImage: { ...StyleSheet.absoluteFill },
   heartButton: {
     position: 'absolute',
     top: 12,

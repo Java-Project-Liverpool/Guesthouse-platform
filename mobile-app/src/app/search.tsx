@@ -341,7 +341,7 @@ const styles = StyleSheet.create({
     borderRadius: 20,
   },
   thumb: { width: 100, height: 100, borderRadius: 14, overflow: 'hidden' },
-  thumbImage: { ...StyleSheet.absoluteFillObject },
+  thumbImage: { ...StyleSheet.absoluteFill },
   resultInfo: { flex: 1, justifyContent: 'center' },
   resultName: { fontSize: 17, fontWeight: '800', color: colors.text, marginBottom: 2 },
   resultCity: { fontSize: 14, color: colors.muted, marginBottom: 4 },
