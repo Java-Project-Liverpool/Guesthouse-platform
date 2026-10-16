@@ -3,6 +3,8 @@ import multer from "multer";
 import { authenticate, requireAdmin } from "../middleware/authMiddleware";
 import {
   ImageValidationError,
+  galleryFolder,
+  logoFolder,
   maxImageSizeBytes,
   uploadImage
 } from "../services/imageService";
@@ -22,8 +24,8 @@ const upload = multer({
 
 // Where each kind of image is stored inside Cloudinary
 const folders: Record<string, string> = {
-  logo: "guesthouse-platform/logos",
-  gallery: "guesthouse-platform/gallery"
+  logo: logoFolder,
+  gallery: galleryFolder
 };
 
 /*

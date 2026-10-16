@@ -1,5 +1,5 @@
 import { v2 as cloudinary } from "cloudinary";
-   
+
 /*
  * The parts of an uploaded file that this service uses.
  * The file objects that multer produces have this shape.
@@ -152,4 +152,50 @@ export const deleteImages = async (publicIds: string[]): Promise<void> => {
       console.error(`Could not delete image ${publicIds[index]}.`);
     }
   });
+};
+
+/*
+ * The folders inside Cloudinary where guesthouse images are kept.
+ * The upload route and the guesthouse routes both use these, so an image
+ * can only be saved to a guesthouse from the folder it was uploaded to.
+ */
+export const logoFolder = "guesthouse-platform/logos";
+export const galleryFolder = "guesthouse-platform/gallery";
+
+/*
+ * Check that an image URL and public ID really belong to our Cloudinary
+ * account and to the expected folder, and that they match each other.
+ *
+ * This matters because the public ID is later used to delete the image.
+ * Without this check, a request could name any image and have it deleted.
+ */
+export const isOwnImage = (
+  url: unknown,
+  publicId: unknown,
+  folder: string
+): boolean => {
+  if (typeof url !== "string" || typeof publicId !== "string") return false;
+
+  const cloudName = process.env.CLOUDINARY_CLOUD_NAME;
+  if (!cloudName) return false;
+
+  // The public ID must sit directly inside the expected folder
+  const idPrefix = `${folder}/`;
+  if (!publicId.startsWith(idPrefix)) return false;
+
+  const fileName = publicId.slice(idPrefix.length);
+  if (fileName === "" || fileName.includes("/") || fileName.includes("..")) {
+    return false;
+  }
+
+  // The URL must be an https link on our own Cloudinary account
+  const urlPrefix = `https://res.cloudinary.com/${cloudName}/image/upload/`;
+  if (!url.startsWith(urlPrefix)) return false;
+
+  // After the optional version (like "v1712345678/"), the URL must be the
+  // public ID followed by a file extension and nothing else
+  const rest = url.slice(urlPrefix.length).replace(/^v\d+\//, "");
+  if (!rest.startsWith(`${publicId}.`)) return false;
+
+  return /^[a-z0-9]+$/i.test(rest.slice(publicId.length + 1));
 };

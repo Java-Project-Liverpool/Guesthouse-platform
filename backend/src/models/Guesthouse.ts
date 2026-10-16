@@ -4,6 +4,8 @@ export interface IGuesthouse extends Document {
   name: string;
   logo: string;
   gallery: string[];
+  logoPublicId?: string;
+  galleryPublicIds: string[];
   description: string;
   amenities: string[];
   pricePerNight: number;
@@ -46,6 +48,18 @@ const guesthouseSchema = new Schema<IGuesthouse>(
     },
 
     gallery: {
+      type: [String],
+      default: []
+    },
+
+    // Cloudinary public IDs, needed to delete an image later.
+    // These sit beside the URLs above and do not replace them.
+    logoPublicId: {
+      type: String,
+      trim: true
+    },
+
+    galleryPublicIds: {
       type: [String],
       default: []
     },
