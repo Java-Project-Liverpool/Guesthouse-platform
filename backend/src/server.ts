@@ -6,6 +6,7 @@ import connectDB from "./config/database";
 import adminRoutes from "./routes/adminRoutes";
 import authRoutes from "./routes/authRoutes";
 import guesthouseRoutes from "./routes/guesthouseRoutes";
+import uploadRoutes from "./routes/uploadRoutes";
 import favouriteRoutes from "./routes/favouriteRoutes";
 import favouriteCollectionRoutes from "./routes/favouriteCollectionRoutes";
 import comparisonRoutes from "./routes/comparisonRoutes";
@@ -35,7 +36,7 @@ app.use("/api/favourites", favouriteRoutes);
 app.use("/api/favourite-collections", favouriteCollectionRoutes);
 app.use("/api/comparisons", comparisonRoutes);
 app.use("/api/search-history", searchHistoryRoutes);
-
+app.use("/api/uploads", uploadRoutes);
 
 // Render checks /health; retain the API-prefixed path for existing clients.
 app.get(["/health", "/api/health"], (_req, res) => {
