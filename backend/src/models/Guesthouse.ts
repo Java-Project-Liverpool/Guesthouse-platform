@@ -118,7 +118,7 @@ const guesthouseSchema = new Schema<IGuesthouse>(
 
     verificationStatus: {
       type: String,
-      enum: ["pending", "verified", "rejected"],
+      enum: ["pending", "verified", "needs_review"],
       default: "pending"
     },
 
