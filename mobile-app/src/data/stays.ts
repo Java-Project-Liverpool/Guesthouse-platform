@@ -1,3 +1,4 @@
+import { Asset } from 'expo-asset';
 import { useEffect, useState } from 'react';
 
 export type Stay = {
@@ -10,12 +11,13 @@ export type Stay = {
   verified: boolean;
   color: string;
   image?: string;
+  images?: string[];
   description: string;
   amenities: string[];
   latitude: number;
   longitude: number;
   phone: string;
-  sample: boolean;s
+  sample: boolean;
 };
 
 // What the backend sends for each guesthouse
@@ -42,6 +44,40 @@ const colorPalette = ['#4F8F9A', '#D98F4E', '#3E6B5E', '#6E8F6A', '#C27A4A'];
 const sampleDescription =
   'A quiet riverside guesthouse with shaded decks, a small pool and sunrise breakfasts. Contact the host directly to check dates and rates.';
 
+// Turns a bundled image into an address the screens can use
+function local(file: number) {
+  return Asset.fromModule(file).uri;
+}
+
+// AI-generated sample photos for the fictional sample guesthouses
+const sampleImages: Record<string, string[]> = {
+  '1': [
+    local(require('@/assets/images/stays/thamalakane-1.jpg')),
+    local(require('@/assets/images/stays/thamalakane-2.jpg')),
+    local(require('@/assets/images/stays/thamalakane-3.jpg')),
+  ],
+  '2': [
+    local(require('@/assets/images/stays/kalahari-1.jpg')),
+    local(require('@/assets/images/stays/kalahari-2.jpg')),
+    local(require('@/assets/images/stays/kalahari-3.jpg')),
+  ],
+  '3': [
+    local(require('@/assets/images/stays/kubu-1.jpg')),
+    local(require('@/assets/images/stays/kubu-2.jpg')),
+    local(require('@/assets/images/stays/kubu-3.jpg')),
+  ],
+  '4': [
+    local(require('@/assets/images/stays/delta-1.jpg')),
+    local(require('@/assets/images/stays/delta-2.jpg')),
+    local(require('@/assets/images/stays/delta-3.jpg')),
+  ],
+  '5': [
+        local(require('@/assets/images/stays/delta-1.jpg')),
+    local(require('@/assets/images/stays/delta-2.jpg')),
+    local(require('@/assets/images/stays/delta-3.jpg')),
+  ],
+};
+
 function makeSample(
   id: string,
   name: string,
@@ -53,6 +89,7 @@ function makeSample(
   latitude: number,
   longitude: number
 ): Stay {
+  const images = sampleImages[id];
   return {
     id,
     name,
@@ -62,6 +99,8 @@ function makeSample(
     ratings,
     verified: true,
     color,
+    image: images?.[0],
+    images,
     description: sampleDescription,
     amenities: ['Wi-Fi', 'Pool', 'Breakfast', 'Parking'],
     latitude,
@@ -81,6 +120,9 @@ export const sampleStays: Stay[] = [
 
 // Turns a backend guesthouse into the shape the screens use
 function toStay(item: ApiGuesthouse, index: number): Stay {
+  const images =
+    item.gallery && item.gallery.length > 0 ? item.gallery : item.logo ? [item.logo] : undefined;
+
   return {
     id: item._id,
     name: item.name,
@@ -88,7 +130,8 @@ function toStay(item: ApiGuesthouse, index: number): Stay {
     price: item.pricePerNight,
     verified: item.verificationStatus === 'verified',
     color: colorPalette[index % colorPalette.length],
-    image: item.gallery?.[0] || item.logo || undefined,
+    image: images?.[0],
+    images,
     description: item.description,
     amenities: item.amenities ?? [],
     latitude: item.location?.latitude ?? 0,
