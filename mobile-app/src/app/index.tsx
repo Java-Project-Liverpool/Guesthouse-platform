@@ -14,6 +14,8 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import LoginPrompt from '@/components/login-prompt';
+import { useAuth } from '@/data/auth';
 import { useStays } from '@/data/stays';
 import { useFavourites } from '@/data/favourites';
 
@@ -88,7 +90,12 @@ export default function HomeScreen() {
   const [city, setCity] = useState('All');
   const [sort, setSort] = useState<'cheapest' | 'rated'>('cheapest');
   const [query, setQuery] = useState('');
-    const { saved, toggleSaved } = useFavourites();
+  const { saved, toggleSaved } = useFavourites();
+  const { user } = useAuth();
+  const [promptOpen, setPromptOpen] = useState(false);
+
+  // Guests get the "Log in to save this stay" sheet instead of saving
+  const save = (id: string) => (user ? toggleSaved(id) : setPromptOpen(true));
 
   const openStay = (id: string) => router.push({ pathname: '/details', params: { id } });
 
@@ -115,7 +122,7 @@ export default function HomeScreen() {
               <Text style={styles.greetingBold}>Welcome back</Text>
             </View>
           </View>
-          <Pressable style={styles.profileButton} onPress={() => router.push('/login')}>
+          <Pressable style={styles.profileButton} onPress={() => router.push('/account')}>
             <Ionicons name="person-outline" size={22} color={colors.dark} />
           </Pressable>
         </View>
@@ -132,10 +139,10 @@ export default function HomeScreen() {
               placeholderTextColor={colors.muted}
               value={query}
               onChangeText={setQuery}
-                            onFocus={() => router.push('/search')}
+              onFocus={() => router.push('/search')}
             />
           </View>
-                    <Pressable
+          <Pressable
             style={styles.filterButton}
             onPress={() => router.push({ pathname: '/search', params: { filter: '1' } })}>
             <Ionicons name="filter-outline" size={22} color="#FFFFFF" />
@@ -177,7 +184,7 @@ export default function HomeScreen() {
                 height={203}
                 price={stay.price}
                 saved={saved.includes(stay.id)}
-                onSave={() => toggleSaved(stay.id)}
+                onSave={() => save(stay.id)}
               />
               <View style={styles.cardTitleRow}>
                 <Text style={styles.cardTitle} numberOfLines={1}>
@@ -225,7 +232,7 @@ export default function HomeScreen() {
                 image={stay.image}
                 height={172}
                 saved={saved.includes(stay.id)}
-                onSave={() => toggleSaved(stay.id)}
+                onSave={() => save(stay.id)}
               />
               <View style={styles.cardTitleRow}>
                 <Text style={styles.cardTitle} numberOfLines={1}>
@@ -246,13 +253,15 @@ export default function HomeScreen() {
           ))}
         </View>
       </ScrollView>
+
+      <LoginPrompt visible={promptOpen} onClose={() => setPromptOpen(false)} />
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.background },
-  // On web the starter tab bar floats over the top, so leave room for it
+  // On web the tab bar floats over the top, so leave room for it
   content: { paddingTop: Platform.OS === 'web' ? 84 : 12, paddingBottom: 40 },
   padded: { paddingHorizontal: 20 },
   row: { flexDirection: 'row', alignItems: 'center', gap: 6 },

@@ -172,7 +172,11 @@ export default function LoginScreen() {
           onChangeText={setPassword}
           onSubmitEditing={submit}
         />
-
+        {isLogin && (
+          <Pressable onPress={() => router.push('/forgot-password')}>
+            <Text style={[styles.note, { marginBottom: 22 }]}>Forgot password?</Text>
+          </Pressable>
+        )}
         {error !== '' && <Text style={styles.error}>{error}</Text>}
 
         {/* Main button */}

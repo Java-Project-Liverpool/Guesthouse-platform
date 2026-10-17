@@ -14,6 +14,8 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import LoginPrompt from '@/components/login-prompt';
+import { useAuth } from '@/data/auth';
 import { useFavourites } from '@/data/favourites';
 import { useStays } from '@/data/stays';
 
@@ -62,6 +64,8 @@ export default function DetailsScreen() {
   const { saved: savedIds, toggleSaved } = useFavourites();
   const [myRating, setMyRating] = useState(0);
   const [comment, setComment] = useState('');
+  const { user } = useAuth();
+  const [promptOpen, setPromptOpen] = useState(false);
 
   if (loading || stays.length === 0) {
     return (
@@ -90,9 +94,13 @@ export default function DetailsScreen() {
       <ScrollView contentContainerStyle={styles.scroll}>
         {/* Hero photo with buttons */}
         <View style={[styles.hero, { backgroundColor: stay.color }]}>
-          {stay.image ? (
-            <Image source={{ uri: stay.image }} style={styles.heroImage} resizeMode="cover" />
-          ) : null}
+                    <Pressable
+            style={StyleSheet.absoluteFill}
+            onPress={() => router.push({ pathname: '/gallery', params: { id: stay.id } })}>
+            {stay.image ? (
+              <Image source={{ uri: stay.image }} style={styles.heroImage} resizeMode="cover" />
+            ) : null}
+          </Pressable>
           <Pressable style={[styles.roundButton, { top: insets.top + 16, left: 20 }]} onPress={() => router.back()}>
             <Ionicons name="chevron-back" size={22} color={colors.dark} />
           </Pressable>
@@ -100,7 +108,9 @@ export default function DetailsScreen() {
             <Pressable style={styles.roundButtonStatic}>
               <Ionicons name="share-outline" size={22} color={colors.dark} />
             </Pressable>
-            <Pressable style={styles.roundButtonStatic} onPress={() => toggleSaved(stay.id)}>
+            <Pressable
+              style={styles.roundButtonStatic}
+              onPress={() => (user ? toggleSaved(stay.id) : setPromptOpen(true))}>
               <Ionicons
                 name={saved ? 'heart' : 'heart-outline'}
                 size={22}
@@ -203,7 +213,9 @@ export default function DetailsScreen() {
 
               <View style={styles.reviewsHeader}>
                 <Text style={styles.sectionTitleFlat}>Guest reviews</Text>
-                <Text style={styles.seeAll}>See all</Text>
+                <Pressable onPress={() => router.push({ pathname: '/reviews', params: { id: stay.id } })}>
+                  <Text style={styles.seeAll}>See all</Text>
+                </Pressable>
               </View>
               {reviews.map((review) => (
                 <View key={review.name} style={[styles.card, styles.reviewCard]}>
@@ -265,7 +277,18 @@ export default function DetailsScreen() {
               value={comment}
               onChangeText={setComment}
             />
-            <Pressable style={styles.submitButton}>
+            <Pressable
+              style={styles.submitButton}
+              onPress={() => {
+                if (!user) {
+                  setPromptOpen(true);
+                  return;
+                }
+                router.push({
+                  pathname: '/write-review',
+                  params: { id: stay.id, rating: String(myRating) },
+                });
+              }}>
               <Text style={styles.submitText}>Submit review</Text>
             </Pressable>
           </View>
@@ -294,6 +317,8 @@ export default function DetailsScreen() {
           )}
         </View>
       </ScrollView>
+
+      <LoginPrompt visible={promptOpen} onClose={() => setPromptOpen(false)} />
     </View>
   );
 }

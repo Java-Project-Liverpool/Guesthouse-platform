@@ -7,14 +7,19 @@ import {
   TabListProps,
 } from 'expo-router/ui';
 import { usePathname } from 'expo-router';
-import { SymbolView } from 'expo-symbols';
-import { Pressable, useColorScheme, View, StyleSheet } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { ExternalLink } from './external-link';
-import { ThemedText } from './themed-text';
-import { ThemedView } from './themed-view';
+import { MaxContentWidth, Spacing } from '@/constants/theme';
 
-import { Colors, MaxContentWidth, Spacing } from '@/constants/theme';
+const colors = {
+  bar: '#14352A',
+  activePill: '#FFFFFF',
+  activeText: '#14352A',
+  inactiveText: '#D5DED8',
+};
+
+// The bar only shows on the three main tabs
+const TAB_PATHS = ['/', '/favourites', '/account'];
 
 export default function AppTabs() {
   return (
@@ -28,13 +33,25 @@ export default function AppTabs() {
           <TabTrigger name="favourites" href="/favourites" asChild>
             <TabButton>Favourites</TabButton>
           </TabTrigger>
-          <TabTrigger name="explore" href="/explore" asChild>
-            <TabButton>Explore</TabButton>
+          <TabTrigger name="account" href="/account" asChild>
+            <TabButton>Account</TabButton>
           </TabTrigger>
           {/* Screens that are not tabs */}
+                    {/* Screens that are not tabs */}
           <TabTrigger name="login" href="/login" style={{ display: 'none' }} />
           <TabTrigger name="details" href="/details" style={{ display: 'none' }} />
           <TabTrigger name="search" href="/search" style={{ display: 'none' }} />
+          <TabTrigger name="explore" href="/explore" style={{ display: 'none' }} />
+          <TabTrigger name="settings" href="/settings" style={{ display: 'none' }} />
+          <TabTrigger name="edit-profile" href="/edit-profile" style={{ display: 'none' }} />
+          <TabTrigger name="forgot-password" href="/forgot-password" style={{ display: 'none' }} />
+          <TabTrigger name="reviews" href="/reviews" style={{ display: 'none' }} />
+          <TabTrigger name="write-review" href="/write-review" style={{ display: 'none' }} />
+          <TabTrigger name="compare" href="/compare" style={{ display: 'none' }} />
+          <TabTrigger name="gallery" href="/gallery" style={{ display: 'none' }} />
+                    <TabTrigger name="welcome" href={'/welcome' as never} style={{ display: 'none' }} />
+          <TabTrigger name="account-disabled" href={'/account-disabled' as never} style={{ display: 'none' }} />
+          <TabTrigger name="offline" href="/offline" style={{ display: 'none' }} />
         </CustomTabList>
       </TabList>
     </Tabs>
@@ -44,46 +61,23 @@ export default function AppTabs() {
 export function TabButton({ children, isFocused, ...props }: TabTriggerSlotProps) {
   return (
     <Pressable {...props} style={({ pressed }) => pressed && styles.pressed}>
-      <ThemedView
-        type={isFocused ? 'backgroundSelected' : 'backgroundElement'}
-        style={styles.tabButtonView}>
-        <ThemedText type="small" themeColor={isFocused ? 'text' : 'textSecondary'}>
-          {children}
-        </ThemedText>
-      </ThemedView>
+      <View style={[styles.tabButtonView, isFocused && styles.tabButtonActive]}>
+        <Text style={[styles.tabText, isFocused && styles.tabTextActive]}>{children}</Text>
+      </View>
     </Pressable>
   );
 }
 
 export function CustomTabList(props: TabListProps) {
-  const scheme = useColorScheme();
-  const colors = Colors[scheme === 'unspecified' ? 'light' : scheme];
   const pathname = usePathname();
-  // Hide the starter bar on screens that are not tabs
-  const hideBar = ['/login', '/details', '/search'].includes(pathname);
+  // Hide the bar on screens that are not tabs
+  const hideBar = !TAB_PATHS.includes(pathname);
 
   return (
     <View
       {...props}
       style={[styles.tabListContainer, hideBar && { display: 'none' }]}>
-      <ThemedView type="backgroundElement" style={styles.innerContainer}>
-        <ThemedText type="smallBold" style={styles.brandText}>
-          Expo Starter
-        </ThemedText>
-
-        {props.children}
-
-        <ExternalLink href="https://docs.expo.dev" asChild>
-          <Pressable style={styles.externalPressable}>
-            <ThemedText type="link">Docs</ThemedText>
-            <SymbolView
-              tintColor={colors.text}
-              name={{ ios: 'arrow.up.right.square', web: 'link' }}
-              size={12}
-            />
-          </Pressable>
-        </ExternalLink>
-      </ThemedView>
+      <View style={styles.innerContainer}>{props.children}</View>
     </View>
   );
 }
@@ -99,30 +93,27 @@ const styles = StyleSheet.create({
   },
   innerContainer: {
     paddingVertical: Spacing.two,
-    paddingHorizontal: Spacing.five,
+    paddingHorizontal: Spacing.three,
     borderRadius: Spacing.five,
+    backgroundColor: colors.bar,
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-around',
     flexGrow: 1,
     gap: Spacing.two,
     maxWidth: MaxContentWidth,
-  },
-  brandText: {
-    marginRight: 'auto',
   },
   pressed: {
     opacity: 0.7,
   },
   tabButtonView: {
-    paddingVertical: Spacing.one,
-    paddingHorizontal: Spacing.three,
-    borderRadius: Spacing.three,
+    paddingVertical: Spacing.two,
+    paddingHorizontal: Spacing.four,
+    borderRadius: Spacing.five,
   },
-  externalPressable: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    gap: Spacing.one,
-    marginLeft: Spacing.three,
+  tabButtonActive: {
+    backgroundColor: colors.activePill,
   },
+  tabText: { fontSize: 14, fontWeight: '700', color: colors.inactiveText },
+  tabTextActive: { color: colors.activeText },
 });
