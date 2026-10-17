@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import FilterSheet, { countActiveFilters, defaultFilters, type Filters } from '@/components/filter-sheet';
 import { useStays } from '@/data/stays';
 
 const colors = {
@@ -25,6 +26,7 @@ const colors = {
   cardBorder: '#E1E5E0',
   chip: '#EEF1EC',
   star: '#B7650A',
+  badge: '#C9822B',
 };
 
 const sortOptions = [
@@ -38,16 +40,19 @@ function formatPrice(price: number) {
 
 export default function SearchScreen() {
   const router = useRouter();
-  const { q } = useLocalSearchParams<{ q?: string }>();
+  const { q, filter } = useLocalSearchParams<{ q?: string; filter?: string }>();
   const { stays, loading } = useStays();
   const [query, setQuery] = useState(q ?? '');
-  const [showResults, setShowResults] = useState(Boolean(q));
-  const [sort, setSort] = useState<'cheapest' | 'rated'>('cheapest');
+  const [showResults, setShowResults] = useState(Boolean(q) || filter === '1');
+  const [filters, setFilters] = useState<Filters>(defaultFilters);
+  const [sheetOpen, setSheetOpen] = useState(filter === '1');
   // Recent searches are kept in memory only, so they reset when the app restarts
   const [recent, setRecent] = useState(['Maun', 'Kasane lodge', 'Gaborone']);
 
   const cities = Array.from(new Set(stays.map((stay) => stay.city)));
+  const amenityOptions = Array.from(new Set(stays.flatMap((stay) => stay.amenities)));
   const text = query.trim().toLowerCase();
+  const activeFilters = countActiveFilters(filters);
 
   const search = (value: string) => {
     const clean = value.trim();
@@ -61,21 +66,35 @@ export default function SearchScreen() {
 
   const clearSearch = () => {
     setQuery('');
+    setFilters(defaultFilters);
     setShowResults(false);
   };
 
   const results = stays
     .filter((stay) => (stay.name + ' ' + stay.city).toLowerCase().includes(text))
-    .sort((a, b) => (sort === 'cheapest' ? a.price - b.price : (b.rating ?? 0) - (a.rating ?? 0)));
+    .filter((stay) => filters.city === 'All' || stay.city === filters.city)
+    .filter((stay) => filters.maxPrice === null || stay.price <= filters.maxPrice)
+    .filter((stay) => (stay.rating ?? 0) >= filters.minRating)
+    .filter((stay) => filters.amenities.every((name) => stay.amenities.includes(name)))
+    .sort((a, b) => {
+      if (filters.sort === 'cheapest') return a.price - b.price;
+      if (filters.sort === 'expensive') return b.price - a.price;
+      return (b.rating ?? 0) - (a.rating ?? 0);
+    });
 
   const isCity = cities.some((city) => city.toLowerCase() === text);
-  const countText =
-    results.length +
-    (results.length === 1 ? ' guesthouse' : ' guesthouses') +
-    (text === '' ? '' : isCity ? ' in ' + query.trim() : ' for "' + query.trim() + '"');
+  const place =
+    text === ''
+      ? filters.city !== 'All'
+        ? ' in ' + filters.city
+        : ''
+      : isCity
+        ? ' in ' + query.trim()
+        : ' for "' + query.trim() + '"';
+  const countText = results.length + (results.length === 1 ? ' guesthouse' : ' guesthouses') + place;
 
   // Back arrow: leave the screen, or return to the search view if we typed the search here
-  const goBack = () => (q ? router.back() : setShowResults(false));
+  const goBack = () => (q || filter ? router.back() : setShowResults(false));
 
   // Search view: recent searches and popular cities
   if (!showResults) {
@@ -161,8 +180,9 @@ export default function SearchScreen() {
               returnKeyType="search"
             />
           </View>
-          <Pressable style={styles.filterButton}>
+          <Pressable style={styles.filterButton} onPress={() => setSheetOpen(true)}>
             <Ionicons name="filter-outline" size={22} color="#FFFFFF" />
+            {activeFilters > 0 && <View style={styles.filterDot} />}
           </Pressable>
         </View>
 
@@ -170,9 +190,9 @@ export default function SearchScreen() {
           {sortOptions.map((option) => (
             <Pressable
               key={option.key}
-              style={[styles.sortOption, sort === option.key && styles.sortOptionActive]}
-              onPress={() => setSort(option.key)}>
-              <Text style={[styles.sortText, sort === option.key && styles.sortTextActive]}>
+              style={[styles.sortOption, filters.sort === option.key && styles.sortOptionActive]}
+              onPress={() => setFilters({ ...filters, sort: option.key })}>
+              <Text style={[styles.sortText, filters.sort === option.key && styles.sortTextActive]}>
                 {option.label}
               </Text>
             </Pressable>
@@ -221,6 +241,19 @@ export default function SearchScreen() {
           </Pressable>
         ))}
       </ScrollView>
+
+      {sheetOpen && (
+        <FilterSheet
+          filters={filters}
+          cities={cities}
+          amenities={amenityOptions}
+          onApply={(next) => {
+            setFilters(next);
+            setSheetOpen(false);
+          }}
+          onClose={() => setSheetOpen(false)}
+        />
+      )}
     </SafeAreaView>
   );
 }
@@ -259,6 +292,15 @@ const styles = StyleSheet.create({
     backgroundColor: colors.dark,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  filterDot: {
+    position: 'absolute',
+    top: 10,
+    right: 10,
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: colors.badge,
   },
 
   // Search view

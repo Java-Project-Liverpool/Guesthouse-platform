@@ -135,7 +135,9 @@ export default function HomeScreen() {
                             onFocus={() => router.push('/search')}
             />
           </View>
-          <Pressable style={styles.filterButton}>
+                    <Pressable
+            style={styles.filterButton}
+            onPress={() => router.push({ pathname: '/search', params: { filter: '1' } })}>
             <Ionicons name="filter-outline" size={22} color="#FFFFFF" />
           </Pressable>
         </View>
