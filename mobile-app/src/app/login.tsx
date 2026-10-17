@@ -1,7 +1,18 @@
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
-import { Image, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import {
+  ActivityIndicator,
+  Image,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+
+import { login, logout, register, useAuth } from '@/data/auth';
 
 const colors = {
   background: '#F7F5F0',
@@ -13,6 +24,7 @@ const colors = {
   placeholder: '#757575',
   tabTrack: '#EEF1EC',
   logoTile: '#F1F4EF',
+  error: '#B3261E',
 };
 
 const tabs = [
@@ -22,12 +34,80 @@ const tabs = [
 
 export default function LoginScreen() {
   const router = useRouter();
+  const { user } = useAuth();
   const [mode, setMode] = useState<'login' | 'signup'>('login');
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+  const [busy, setBusy] = useState(false);
 
   const isLogin = mode === 'login';
+
+  const switchMode = (next: 'login' | 'signup') => {
+    setMode(next);
+    setError('');
+  };
+
+  // Checks the form, then logs in or registers through the backend
+  const submit = async () => {
+    setError('');
+
+    if (!email.trim() || !password) {
+      setError('Enter your email and password.');
+      return;
+    }
+    if (!isLogin && !name.trim()) {
+      setError('Enter your full name.');
+      return;
+    }
+    if (!isLogin && password.length < 8) {
+      setError('Password must be at least 8 characters.');
+      return;
+    }
+
+    setBusy(true);
+    try {
+      if (isLogin) {
+        await login(email.trim(), password);
+      } else {
+        await register(name.trim(), email.trim(), password);
+      }
+      setPassword('');
+      router.replace('/');
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Something went wrong.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  // Already signed in: show who, with a way to log out
+  if (user) {
+    return (
+      <SafeAreaView style={styles.screen}>
+        <ScrollView contentContainerStyle={styles.content}>
+          <View style={styles.logoTile}>
+            <Image source={require('@/assets/images/logo.png')} style={styles.logo} />
+          </View>
+          <Text style={styles.brand}>Dumela Stays</Text>
+          <Text style={styles.title}>You are signed in</Text>
+
+          <View style={styles.accountCard}>
+            <Text style={styles.accountName}>{user.name}</Text>
+            <Text style={styles.accountEmail}>{user.email}</Text>
+          </View>
+
+          <Pressable style={styles.primaryButton} onPress={() => router.replace('/')}>
+            <Text style={styles.primaryText}>Continue browsing</Text>
+          </Pressable>
+          <Pressable style={styles.guestButton} onPress={() => logout()}>
+            <Text style={styles.guestText}>Log out</Text>
+          </Pressable>
+        </ScrollView>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.screen}>
@@ -49,7 +129,7 @@ export default function LoginScreen() {
             <Pressable
               key={tab.key}
               style={[styles.tab, mode === tab.key && styles.tabActive]}
-              onPress={() => setMode(tab.key)}>
+              onPress={() => switchMode(tab.key)}>
               <Text style={[styles.tabText, mode === tab.key && styles.tabTextActive]}>
                 {tab.label}
               </Text>
@@ -90,11 +170,21 @@ export default function LoginScreen() {
           secureTextEntry
           value={password}
           onChangeText={setPassword}
+          onSubmitEditing={submit}
         />
 
-        {/* Main button (not connected to the backend yet) */}
-        <Pressable style={styles.primaryButton}>
-          <Text style={styles.primaryText}>{isLogin ? 'Log in' : 'Create account'}</Text>
+        {error !== '' && <Text style={styles.error}>{error}</Text>}
+
+        {/* Main button */}
+        <Pressable
+          style={[styles.primaryButton, busy && styles.primaryButtonBusy]}
+          onPress={submit}
+          disabled={busy}>
+          {busy ? (
+            <ActivityIndicator color="#FFFFFF" />
+          ) : (
+            <Text style={styles.primaryText}>{isLogin ? 'Log in' : 'Create account'}</Text>
+          )}
         </Pressable>
 
         {/* Log in view: guest option. Sign up view: link back to log in */}
@@ -106,7 +196,7 @@ export default function LoginScreen() {
             <Text style={styles.note}>Browsing and search need no account.</Text>
           </>
         ) : (
-          <Pressable onPress={() => setMode('login')}>
+          <Pressable onPress={() => switchMode('login')}>
             <Text style={styles.note}>Already registered? Log in</Text>
           </Pressable>
         )}
@@ -174,6 +264,7 @@ const styles = StyleSheet.create({
     color: colors.text,
     marginBottom: 22,
   },
+  error: { fontSize: 14, color: colors.error, marginTop: -8, marginBottom: 16 },
 
   // Buttons
   primaryButton: {
@@ -184,6 +275,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginBottom: 22,
   },
+  primaryButtonBusy: { opacity: 0.7 },
   primaryText: { fontSize: 16, fontWeight: '700', color: '#FFFFFF' },
   guestButton: {
     height: 54,
@@ -196,4 +288,16 @@ const styles = StyleSheet.create({
   },
   guestText: { fontSize: 16, fontWeight: '700', color: colors.dark },
   note: { fontSize: 14, color: colors.muted, textAlign: 'center' },
+
+  // Signed-in view
+  accountCard: {
+    backgroundColor: colors.card,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 20,
+    padding: 20,
+    marginBottom: 24,
+  },
+  accountName: { fontSize: 18, fontWeight: '800', color: colors.text, marginBottom: 4 },
+  accountEmail: { fontSize: 14, color: colors.muted },
 });
