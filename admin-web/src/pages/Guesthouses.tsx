@@ -1,12 +1,15 @@
 import { FormEvent, useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { api, Guesthouse, imgUrl, routes, useApi } from '../api';
+import { api, Guesthouse, imgUrl, routes, useApi, useGuesthouses } from '../api';
 import { Field, fmtP, State, Stars } from '../ui';
 
+// Table of guesthouses with search, edit and deactivate.
 export function GuesthouseList() {
-  const { data, loading, error, reload } = useApi<Guesthouse[]>(routes.guesthouses);
+  const { data, loading, error, reload } = useGuesthouses();
   const [q, setQ] = useState(''); const [msg, setMsg] = useState('');
+  // Client-side search by name or city.
   const rows = (data ?? []).filter(g => (g.name + g.city).toLowerCase().includes(q.toLowerCase()));
+  // Runs an action, then refreshes the list; shows the server's error message if it fails.
   const act = async (fn: () => Promise<unknown>) => { setMsg(''); try { await fn(); reload(); } catch (e) { setMsg((e as Error).message); } };
   return (<>
     <div className="bar"><div><h1>Guesthouses</h1><p className="muted">{data?.length ?? 0} registered</p></div>
@@ -16,7 +19,7 @@ export function GuesthouseList() {
     <State loading={loading} error={error} retry={reload} empty={!rows.length} emptyText={q ? 'No guesthouses match your search.' : 'No guesthouses yet. Register the first one.'}>
       <div className="card scroll"><table><thead><tr><th>Guesthouse</th><th>City</th><th>Price / night</th><th>Rating</th><th>Status</th><th /></tr></thead><tbody>
         {rows.map(g => <tr key={g._id}>
-          <td><b>{g.name}</b></td><td>{g.city}</td><td>{fmtP(g.pricePerNight)}</td><td><Stars n={g.avgRating ?? 0} /></td>
+          <td><b>{g.name}</b></td><td>{g.city}</td><td>{fmtP(g.pricePerNight)}</td><td><Stars n={g.averageRating ?? 0} /></td>
           <td>{g.verificationStatus[0].toUpperCase() + g.verificationStatus.slice(1)}</td>
           <td className="acts">
             <Link className="btn ghost" to={`/guesthouses/${g._id}`}>Edit</Link>
@@ -26,20 +29,25 @@ export function GuesthouseList() {
     </State></>);
 }
 
+// Amenity choices offered in the form.
 const AMEN = ['Wi-Fi', 'Pool', 'Breakfast', 'Parking'];
+// Empty form values. Numbers stay as text until submit so the inputs behave properly.
 const blank = { name: '', description: '', city: '', country: 'Botswana', latitude: '', longitude: '', price: '', phone: '', email: '', amenities: [] as string[], logo: '', gallery: '' };
 
+// One form for both adding (no id in the URL) and editing (id in the URL).
 export function GuesthouseForm() {
   const { id } = useParams(); const nav = useNavigate();
   const existing = useApi<Guesthouse>(id ? `${routes.guesthouses}/${id}` : '');
   const [f, setF] = useState(blank); const [logo, setLogo] = useState<File>(); const [gallery, setGallery] = useState<FileList | null>(null);
   const [errs, setErrs] = useState<Record<string, string>>({}); const [msg, setMsg] = useState(''); const [busy, setBusy] = useState(false);
+  // When editing, copy the loaded guesthouse into the form fields.
   useEffect(() => {
     const g = existing.data; if (!id || !g) return;
     setF({ name: g.name, description: g.description, city: g.city, country: g.country, latitude: String(g.location.latitude), longitude: String(g.location.longitude),
       price: String(g.pricePerNight), phone: g.contact.phone, email: g.contact.email, amenities: g.amenities, logo: g.logo ?? '', gallery: (g.gallery ?? []).join('\n') });
   }, [existing.data, id]);
   const set = (k: keyof typeof blank, v: unknown) => setF(p => ({ ...p, [k]: v }));
+  // Mirrors the backend's rules (required fields, coordinate ranges) so errors show before sending.
   const validate = () => {
     const e: Record<string, string> = {}; const lat = Number(f.latitude), lng = Number(f.longitude);
     if (!f.name.trim()) e.name = 'Enter a name.';
@@ -54,6 +62,7 @@ export function GuesthouseForm() {
     if (!/^\S+@\S+\.\S+$/.test(f.email)) e.email = 'Enter a valid email.';
     setErrs(e); return !Object.keys(e).length;
   };
+  // Build the JSON body the backend accepts, then POST (add) or PUT (edit).
   const submit = async (ev: FormEvent) => {
     ev.preventDefault(); if (!validate()) return;
     const body = { name: f.name, description: f.description, city: f.city, country: f.country, pricePerNight: +f.price,
@@ -62,6 +71,7 @@ export function GuesthouseForm() {
     try { await api(id ? `${routes.guesthouses}/${id}` : routes.guesthouses, { method: id ? 'PUT' : 'POST', body }); nav('/guesthouses'); }
     catch (x) { setMsg((x as Error).message); setBusy(false); }
   };
+  // Helper that renders a labelled text input bound to one form field.
   const txt = (k: keyof typeof blank, label: string, type = 'text') =>
     <Field label={label} error={errs[k]}><input type={type} value={f[k] as string} onChange={e => set(k, e.target.value)} /></Field>;
   return (<>

@@ -5,6 +5,7 @@ import Dashboard from './pages/Dashboard';
 import { GuesthouseList, GuesthouseForm } from './pages/Guesthouses';
 import { Reviews, Admins, Notifications } from './pages/Other';
 
+// Page frame: sidebar navigation on the left (on top on phones) and the current page on the right.
 function Layout() {
   const { logout } = useAuth();
   const links = [['/', 'Dashboard'], ['/guesthouses', 'Guesthouses'], ['/reviews', 'Reviews'], ['/admins', 'Admin users'], ['/notifications', 'Notifications']];
@@ -19,6 +20,7 @@ function Layout() {
     </div>
   );
 }
+// Route table. Everything except /login sits behind Protected.
 export default function App() {
   return (
     <AuthProvider>

@@ -2,21 +2,24 @@ import { FormEvent, useState } from 'react';
 import { AdminUser, api, Notice, Review, routes, useApi } from '../api';
 import { Field, State, Stars } from '../ui';
 
+// Review fields can be a populated object or a plain id; this picks the name.
 const nm = (x: { name: string } | string) => (typeof x === 'string' ? x : x.name);
 const day = (d: string) => new Date(d).toLocaleDateString();
 
+// Reviews page with All and Reported tabs. Needs a ratings router on the backend.
 export function Reviews() {
   const [tab, setTab] = useState<'all' | 'reported'>('all'); const [msg, setMsg] = useState('');
   const { data, loading, error, reload } = useApi<Review[]>(tab === 'all' ? routes.reviews : routes.reported);
+  // Dismiss a report or remove a review, then reload.
   const act = async (path: string, method: string) => { setMsg(''); try { await api(path, { method }); reload(); } catch (e) { setMsg((e as Error).message); } };
   return (<><h1>Reviews</h1><p className="muted">Ratings and comments from customers</p>
     <div className="tabs">{(['all', 'reported'] as const).map(t => <button key={t} className={'btn ' + (tab === t ? '' : 'ghost')} onClick={() => setTab(t)}>{t === 'all' ? 'All reviews' : 'Reported'}</button>)}</div>
     {msg && <p className="ferr" role="alert">{msg}</p>}
     <State loading={loading} error={error} retry={reload} empty={!data?.length} emptyText={tab === 'all' ? 'No reviews yet.' : 'No reported reviews. Nothing needs your attention.'}>
       {data?.map(r => <div className="card review" key={r._id}>
-        <div className="bar"><b>{nm(r.guesthouse)}</b><Stars n={r.rating} /></div>
+        <div className="bar"><b>{nm(r.guesthouseId)}</b><Stars n={r.rating} /></div>
         <p>{r.comment || <span className="muted">No comment.</span>}</p>
-        <small className="muted">{nm(r.customer)} · {day(r.createdAt)}{r.reportReason && ` · Reported: ${r.reportReason}`}</small>
+        <small className="muted">{nm(r.customerId)} · {day(r.createdAt)}{r.reportReason && ` · Reported: ${r.reportReason}`}</small>
         <div className="acts">
           {r.reported && <button className="btn ghost" onClick={() => act(`${routes.reviews}/${r._id}/dismiss-report`, 'POST')}>Dismiss report</button>}
           <button className="btn ghost danger" onClick={() => confirm('Remove this review?') && act(`${routes.reviews}/${r._id}`, 'DELETE')}>Remove review</button>
@@ -24,9 +27,11 @@ export function Reviews() {
     </State></>);
 }
 
+// Lists admin accounts and lets an admin create another one.
 export function Admins() {
   const { data, loading, error, reload } = useApi<AdminUser[]>(routes.admins);
   const [f, setF] = useState({ name: '', email: '', password: '' }); const [err, setErr] = useState('');
+  // Validate, then create the admin. The backend always assigns the admin role.
   const submit = async (e: FormEvent) => {
     e.preventDefault();
     if (!f.name.trim()) return setErr('Enter a name.');
@@ -45,8 +50,10 @@ export function Admins() {
       {err && <p className="ferr" role="alert">{err}</p>}<button className="btn">Create admin</button></form></>);
 }
 
+// Activity feed. If the backend has no notifications route yet, a friendly message is shown.
 export function Notifications() {
   const { data, loading, error, reload } = useApi<Notice[]>(routes.notifications);
+  // A 404 means the route is not built yet, not a real error.
   const off = error?.status === 404;
   return (<><h1>Notifications</h1><p className="muted">New ratings, sign-ups and listing activity</p>
     <State loading={loading} error={off ? undefined : error} retry={reload} empty={off || !data?.length}

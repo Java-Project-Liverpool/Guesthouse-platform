@@ -3,11 +3,13 @@ import { Navigate, useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth';
 import { Field } from '../ui';
 
+// Admin sign-in form. Validates the fields before calling the API.
 export default function Login() {
   const { token, login } = useAuth(); const nav = useNavigate();
   const [email, setEmail] = useState(''); const [pw, setPw] = useState('');
   const [err, setErr] = useState(''); const [busy, setBusy] = useState(false);
   if (token) return <Navigate to="/" replace />;
+  // Check email and password format first so obvious mistakes never reach the server.
   const submit = async (e: FormEvent) => {
     e.preventDefault();
     if (!/^\S+@\S+\.\S+$/.test(email)) return setErr('Enter a valid email address.');
