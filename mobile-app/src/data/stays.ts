@@ -71,10 +71,10 @@ const sampleImages: Record<string, string[]> = {
     local(require('@/assets/images/stays/delta-2.jpg')),
     local(require('@/assets/images/stays/delta-3.jpg')),
   ],
-  '5': [
-        local(require('@/assets/images/stays/delta-1.jpg')),
-    local(require('@/assets/images/stays/delta-2.jpg')),
-    local(require('@/assets/images/stays/delta-3.jpg')),
+   '5': [
+    local(require('@/assets/images/stays/boteti-1.jpg')),
+    local(require('@/assets/images/stays/boteti-2.jpg')),
+    local(require('@/assets/images/stays/boteti-3.jpg')),
   ],
 };
 
