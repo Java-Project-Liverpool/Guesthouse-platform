@@ -32,6 +32,7 @@ export const GuesthouseList: React.FC = () => {
 
   useEffect(() => {
     let isMounted = true;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setLoading(true);
 
     const timer = setTimeout(() => {
