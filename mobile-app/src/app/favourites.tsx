@@ -1,5 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import { useState } from 'react';
 import { Image, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -27,6 +28,17 @@ export default function FavouritesScreen() {
   const { saved } = useFavourites();
 
   const favourites = stays.filter((stay) => saved.includes(stay.id));
+  const [hint, setHint] = useState('');
+
+  // Compare needs two saved stays: it uses the first two you saved
+  const compare = () => {
+    if (saved.length < 2) {
+      setHint('Save at least two stays to compare them.');
+      return;
+    }
+    setHint('');
+    router.push({ pathname: '/compare', params: { a: saved[0], b: saved[1] } });
+  };
 
   return (
     <SafeAreaView style={styles.screen}>
@@ -38,12 +50,14 @@ export default function FavouritesScreen() {
             <Text style={styles.title}>Favourites</Text>
           </View>
           {favourites.length > 0 && (
-            <Pressable style={styles.compareButton}>
+            <Pressable style={styles.compareButton} onPress={compare}>
               <Ionicons name="filter-outline" size={18} color={colors.dark} />
               <Text style={styles.compareText}>Compare</Text>
             </Pressable>
           )}
         </View>
+
+        {hint !== '' && <Text style={styles.hint}>{hint}</Text>}
 
         {/* Empty state */}
         {favourites.length === 0 && (
@@ -94,7 +108,7 @@ export default function FavouritesScreen() {
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.background },
-  // On web the starter tab bar floats over the top, so leave room for it
+  // On web the tab bar floats over the top, so leave room for it
   content: {
     width: '100%',
     maxWidth: 480,
@@ -124,6 +138,7 @@ const styles = StyleSheet.create({
     borderRadius: 14,
   },
   compareText: { fontSize: 15, fontWeight: '800', color: colors.dark },
+  hint: { fontSize: 14, color: colors.muted, marginBottom: 14 },
 
   // Saved stays
   card: {
