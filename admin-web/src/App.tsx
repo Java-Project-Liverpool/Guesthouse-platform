@@ -1,42 +1,155 @@
-import { NavLink, Navigate, Outlet, Route, Routes } from 'react-router-dom';
-import { AuthProvider, Protected, useAuth } from './auth';
-import Login from './pages/Login';
-import Dashboard from './pages/Dashboard';
-import { GuesthouseList, GuesthouseForm } from './pages/Guesthouses';
-import { Reviews, Admins, Notifications } from './pages/Other';
+import React, { useEffect, useState } from 'react';
+import { AuthProvider } from './context/AuthContext';
+import { ThemeProvider } from './context/ThemeContext';
+import { useAuth } from './hooks/useAuth';
+import { AdminLayout } from './layouts/AdminLayout';
+import { AdminUsers } from './pages/AdminUsers';
+import { Dashboard } from './pages/Dashboard';
+import { GuesthouseDetail } from './pages/GuesthouseDetail';
+import { GuesthouseEdit } from './pages/GuesthouseEdit';
+import { GuesthouseList } from './pages/GuesthouseList';
+import { Landing } from './pages/Landing';
+import { Login } from './pages/Login';
+import { Reviews } from './pages/Reviews';
+import { Settings } from './pages/Settings';
+import { Users } from './pages/Users';
 
-// Page frame: sidebar navigation on the left (on top on phones) and the current page on the right.
-function Layout() {
-  const { logout } = useAuth();
-  const links = [['/', 'Dashboard'], ['/guesthouses', 'Guesthouses'], ['/reviews', 'Reviews'], ['/admins', 'Admin users'], ['/notifications', 'Notifications']];
+const AppRoutes: React.FC = () => {
+  const { token, isLoading } = useAuth();
+  const [path, setPath] = useState(window.location.pathname);
+
+  useEffect(() => {
+    const onPop = () => setPath(window.location.pathname);
+    window.addEventListener('popstate', onPop);
+    return () => window.removeEventListener('popstate', onPop);
+  }, []);
+
+  // Protected route check
+  const isPublicRoute = path === '/' || path === '/login' || path === '/login/';
+
+  if (isLoading && !isPublicRoute) {
+    return (
+      <div
+        style={{
+          minHeight: '100vh',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          background: 'var(--bg-page)',
+          color: 'var(--text-muted)',
+          fontSize: '1.1rem',
+        }}
+      >
+        Loading Dumela Stays...
+      </div>
+    );
+  }
+
+  if (!token && !isPublicRoute) {
+    return <Login />;
+  }
+
+  // Routing Logic
+  if (path === '/' || path === '') {
+    return <Landing />;
+  }
+
+  if (path === '/login' || path === '/login/') {
+    return <Login />;
+  }
+
+  if (path === '/dashboard' || path === '/dashboard/') {
+    return (
+      <AdminLayout activePath="/dashboard" title="Dashboard" subtitle="Platform overview">
+        <Dashboard />
+      </AdminLayout>
+    );
+  }
+
+  if (path === '/guesthouses' || path === '/guesthouses/') {
+    return (
+      <AdminLayout activePath="/guesthouses">
+        <GuesthouseList />
+      </AdminLayout>
+    );
+  }
+
+  if (path === '/guesthouses/new' || path === '/guesthouses/new/') {
+    return (
+      <AdminLayout activePath="/guesthouses">
+        <GuesthouseEdit />
+      </AdminLayout>
+    );
+  }
+
+  // Edit route: /guesthouses/:id/edit
+  const editMatch = path.match(/^\/guesthouses\/([^/]+)\/edit\/?$/);
+  if (editMatch) {
+    const id = editMatch[1];
+    return (
+      <AdminLayout activePath="/guesthouses">
+        <GuesthouseEdit id={id} />
+      </AdminLayout>
+    );
+  }
+
+  // Detail route: /guesthouses/:id
+  const detailMatch = path.match(/^\/guesthouses\/([^/]+)\/?$/);
+  if (detailMatch) {
+    const id = detailMatch[1];
+    return (
+      <AdminLayout activePath="/guesthouses">
+        <GuesthouseDetail id={id} />
+      </AdminLayout>
+    );
+  }
+
+  if (path === '/app-users' || path === '/app-users/') {
+    return (
+      <AdminLayout activePath="/app-users">
+        <Users />
+      </AdminLayout>
+    );
+  }
+
+  if (path === '/admin-users' || path === '/admin-users/') {
+    return (
+      <AdminLayout activePath="/admin-users">
+        <AdminUsers />
+      </AdminLayout>
+    );
+  }
+
+  if (path === '/reviews' || path === '/reviews/') {
+    return (
+      <AdminLayout activePath="/reviews">
+        <Reviews />
+      </AdminLayout>
+    );
+  }
+
+  if (path === '/settings' || path === '/settings/') {
+    return (
+      <AdminLayout activePath="/settings">
+        <Settings />
+      </AdminLayout>
+    );
+  }
+
+  // Fallback to Dashboard if authenticated, otherwise Landing
   return (
-    <div className="shell">
-      <nav className="side">
-        <b className="brand">Dumela Stays<small>Admin portal</small></b>
-        {links.map(([to, t]) => <NavLink key={to} to={to} end={to === '/'}>{t}</NavLink>)}
-        <button className="btn ghost" onClick={logout}>Log out</button>
-      </nav>
-      <main><Outlet /></main>
-    </div>
+    <AdminLayout activePath="/dashboard" title="Dashboard" subtitle="Platform overview">
+      <Dashboard />
+    </AdminLayout>
   );
-}
-// Route table. Everything except /login sits behind Protected.
+};
+
 export default function App() {
   return (
-    <AuthProvider>
-      <Routes>
-        <Route path="/login" element={<Login />} />
-        <Route element={<Protected><Layout /></Protected>}>
-          <Route index element={<Dashboard />} />
-          <Route path="guesthouses" element={<GuesthouseList />} />
-          <Route path="guesthouses/new" element={<GuesthouseForm />} />
-          <Route path="guesthouses/:id" element={<GuesthouseForm />} />
-          <Route path="reviews" element={<Reviews />} />
-          <Route path="admins" element={<Admins />} />
-          <Route path="notifications" element={<Notifications />} />
-        </Route>
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
-    </AuthProvider>
+    <ThemeProvider>
+      <AuthProvider>
+        <AppRoutes />
+      </AuthProvider>
+    </ThemeProvider>
   );
 }
