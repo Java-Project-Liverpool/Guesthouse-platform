@@ -39,6 +39,7 @@ export default function HomeScreen() {
         {/* Branding header */}
         <View style={styles.header}>
           <View>
+            <Image source={require('@/assets/images/logo.png')} style={{ width: 36, height: 36, resizeMode: 'contain' }} />
             <Text style={styles.brand}>Dumela Stays</Text>
             <Text style={styles.tagline}>Find your next stay.</Text>
           </View>
