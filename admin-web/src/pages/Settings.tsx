@@ -1,21 +1,26 @@
 import React, { useState } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { useTheme } from '../hooks/useTheme';
+import { updatePassword, updateProfile } from '../services/userService';
 import type { ThemeMode } from '../types';
 
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
 export const Settings: React.FC = () => {
-  const { user, logout } = useAuth();
+  const { user, logout, refreshUser } = useAuth();
   const { theme, setTheme } = useTheme();
 
   // Profile Form State
-  const [name, setName] = useState(user?.name || 'Administrator');
-  const [email, setEmail] = useState(user?.email || 'admin@example.com');
-  const [profileMsg, setProfileMsg] = useState('');
+  const [name, setName] = useState(user?.name ?? '');
+  const [email, setEmail] = useState(user?.email ?? '');
+  const [profileSaving, setProfileSaving] = useState(false);
+  const [profileMsg, setProfileMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   // Password Form State
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [passwordSaving, setPasswordSaving] = useState(false);
   const [passwordMsg, setPasswordMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   // Notifications toggles
@@ -32,13 +37,54 @@ export const Settings: React.FC = () => {
         .slice(0, 2)
     : 'AD';
 
-  const handleSaveProfile = (e: React.FormEvent) => {
+  // Keep the form in sync with the administrator record once it loads from the
+  // API. Adjusting the state during render avoids a cascading effect.
+  const userKey = user ? user.id ?? user._id : undefined;
+  const [loadedUserKey, setLoadedUserKey] = useState(userKey);
+  if (user && userKey !== loadedUserKey) {
+    setLoadedUserKey(userKey);
+    setName(user.name ?? '');
+    setEmail(user.email ?? '');
+  }
+
+  const handleSaveProfile = async (e: React.FormEvent) => {
     e.preventDefault();
-    setProfileMsg('Profile saved on this device.');
-    setTimeout(() => setProfileMsg(''), 3000);
+
+    const trimmedName = name.trim();
+    const trimmedEmail = email.trim();
+
+    if (trimmedName.length < 2) {
+      setProfileMsg({ type: 'error', text: 'Name must be at least 2 characters long.' });
+      return;
+    }
+    if (!EMAIL_PATTERN.test(trimmedEmail)) {
+      setProfileMsg({ type: 'error', text: 'Enter a valid email address.' });
+      return;
+    }
+
+    setProfileSaving(true);
+    setProfileMsg(null);
+    try {
+      const saved = await updateProfile({ name: trimmedName, email: trimmedEmail });
+      // Reflect the values the server actually stored (e.g. a normalised email).
+      if (saved?.user) {
+        setName(saved.user.name ?? trimmedName);
+        setEmail(saved.user.email ?? trimmedEmail);
+      }
+      await refreshUser();
+      setProfileMsg({ type: 'success', text: 'Profile saved to the database successfully.' });
+    } catch (err: unknown) {
+      setProfileMsg({
+        type: 'error',
+        text: err instanceof Error ? err.message : 'Could not save profile.',
+      });
+    } finally {
+      setProfileSaving(false);
+      setTimeout(() => setProfileMsg(null), 4000);
+    }
   };
 
-  const handleUpdatePassword = (e: React.FormEvent) => {
+  const handleUpdatePassword = async (e: React.FormEvent) => {
     e.preventDefault();
     if (newPassword.length < 8) {
       setPasswordMsg({ type: 'error', text: 'New password must be at least 8 characters long.' });
@@ -49,14 +95,26 @@ export const Settings: React.FC = () => {
       return;
     }
 
-    setPasswordMsg({
-      type: 'success',
-      text: 'Password updated. (Use this new password on your next sign-in)',
-    });
-    setCurrentPassword('');
-    setNewPassword('');
-    setConfirmPassword('');
-    setTimeout(() => setPasswordMsg(null), 4000);
+    setPasswordSaving(true);
+    setPasswordMsg(null);
+    try {
+      await updatePassword({ currentPassword, newPassword });
+      setPasswordMsg({
+        type: 'success',
+        text: 'Password updated in database. Use this new password on your next sign-in.',
+      });
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
+    } catch (err: unknown) {
+      setPasswordMsg({
+        type: 'error',
+        text: err instanceof Error ? err.message : 'Password update failed.',
+      });
+    } finally {
+      setPasswordSaving(false);
+      setTimeout(() => setPasswordMsg(null), 5000);
+    }
   };
 
   return (
@@ -88,8 +146,19 @@ export const Settings: React.FC = () => {
             </h3>
 
             {profileMsg && (
-              <div style={{ padding: '0.75rem 1rem', borderRadius: 12, background: 'var(--accent-mint)', color: 'var(--accent-mint-text)', fontWeight: 600, fontSize: '0.85rem', marginBottom: '1.25rem' }}>
-                {profileMsg}
+              <div
+                style={{
+                  padding: '0.75rem 1rem',
+                  borderRadius: 12,
+                  background: profileMsg.type === 'success' ? 'var(--accent-mint)' : 'rgba(239, 68, 68, 0.1)',
+                  color: profileMsg.type === 'success' ? 'var(--accent-mint-text)' : 'var(--danger)',
+                  fontWeight: 600,
+                  fontSize: '0.85rem',
+                  marginBottom: '1.25rem',
+                  border: `1px solid ${profileMsg.type === 'success' ? 'var(--primary)' : 'var(--danger)'}`,
+                }}
+              >
+                {profileMsg.text}
               </div>
             )}
 
@@ -159,6 +228,7 @@ export const Settings: React.FC = () => {
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
+                  required
                   style={{
                     width: '100%',
                     padding: '0.8rem 1rem',
@@ -169,11 +239,15 @@ export const Settings: React.FC = () => {
                     outline: 'none',
                   }}
                 />
+                <div style={{ marginTop: '0.4rem', fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+                  Used to sign in to the portal. Changing it updates your login address.
+                </div>
               </div>
 
               <div>
                 <button
                   type="submit"
+                  disabled={profileSaving}
                   style={{
                     padding: '0.85rem 1.75rem',
                     borderRadius: 14,
@@ -182,11 +256,12 @@ export const Settings: React.FC = () => {
                     color: 'var(--primary-text)',
                     fontWeight: 600,
                     fontSize: '0.95rem',
-                    cursor: 'pointer',
+                    cursor: profileSaving ? 'not-allowed' : 'pointer',
                     boxShadow: 'var(--shadow-sm)',
+                    opacity: profileSaving ? 0.7 : 1,
                   }}
                 >
-                  Save profile
+                  {profileSaving ? 'Saving profile...' : 'Save profile'}
                 </button>
               </div>
             </form>
@@ -293,6 +368,7 @@ export const Settings: React.FC = () => {
               <div>
                 <button
                   type="submit"
+                  disabled={passwordSaving}
                   style={{
                     padding: '0.85rem 1.75rem',
                     borderRadius: 14,
@@ -301,11 +377,12 @@ export const Settings: React.FC = () => {
                     color: 'var(--primary-text)',
                     fontWeight: 600,
                     fontSize: '0.95rem',
-                    cursor: 'pointer',
+                    cursor: passwordSaving ? 'not-allowed' : 'pointer',
                     boxShadow: 'var(--shadow-sm)',
+                    opacity: passwordSaving ? 0.7 : 1,
                   }}
                 >
-                  Update password
+                  {passwordSaving ? 'Updating password...' : 'Update password'}
                 </button>
               </div>
             </form>

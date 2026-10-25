@@ -8,9 +8,10 @@ import {
 import { HideGuesthouseModal } from '../components/ui/Modal';
 import {
   getGuesthouseById,
+  getGuesthouseRatings,
   setGuesthouseVisibility,
 } from '../services/guesthouseService';
-import type { Guesthouse } from '../types';
+import type { Guesthouse, Rating, User } from '../types';
 
 interface GuesthouseDetailProps {
   id: string;
@@ -18,6 +19,7 @@ interface GuesthouseDetailProps {
 
 export const GuesthouseDetail: React.FC<GuesthouseDetailProps> = ({ id }) => {
   const [guesthouse, setGuesthouse] = useState<Guesthouse | null>(null);
+  const [ratings, setRatings] = useState<Rating[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [modalOpen, setModalOpen] = useState(false);
@@ -25,10 +27,16 @@ export const GuesthouseDetail: React.FC<GuesthouseDetailProps> = ({ id }) => {
 
   const reloadDetails = () => {
     setLoading(true);
-    getGuesthouseById(id)
-      .then((res) => {
-        if (res?.guesthouse) {
-          setGuesthouse(res.guesthouse);
+    Promise.all([
+      getGuesthouseById(id),
+      getGuesthouseRatings(id).catch(() => ({ ratings: [] })),
+    ])
+      .then(([resGh, resRatings]) => {
+        if (resGh?.guesthouse) {
+          setGuesthouse(resGh.guesthouse);
+        }
+        if (resRatings?.ratings) {
+          setRatings(resRatings.ratings);
         }
       })
       .catch((err: unknown) => {
@@ -39,10 +47,14 @@ export const GuesthouseDetail: React.FC<GuesthouseDetailProps> = ({ id }) => {
 
   useEffect(() => {
     let isMounted = true;
-    getGuesthouseById(id)
-      .then((res) => {
-        if (isMounted && res?.guesthouse) {
-          setGuesthouse(res.guesthouse);
+    Promise.all([
+      getGuesthouseById(id),
+      getGuesthouseRatings(id).catch(() => ({ ratings: [] })),
+    ])
+      .then(([resGh, resRatings]) => {
+        if (isMounted) {
+          if (resGh?.guesthouse) setGuesthouse(resGh.guesthouse);
+          if (resRatings?.ratings) setRatings(resRatings.ratings);
         }
       })
       .catch((err: unknown) => {
@@ -338,31 +350,81 @@ export const GuesthouseDetail: React.FC<GuesthouseDetailProps> = ({ id }) => {
               <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                 <span style={{ color: 'var(--text-muted)' }}>Coordinates</span>
                 <span style={{ fontWeight: 600 }}>
-                  {guesthouse.location
+                  {guesthouse.location && typeof guesthouse.location.latitude === 'number'
                     ? `${guesthouse.location.latitude}, ${guesthouse.location.longitude}`
-                    : '-19.9833, 23.4167'}
+                    : 'Not specified'}
                 </span>
               </div>
 
               <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                 <span style={{ color: 'var(--text-muted)' }}>Phone</span>
-                <span style={{ fontWeight: 600 }}>{guesthouse.contact?.phone || '+267 000 0000'}</span>
+                <span style={{ fontWeight: 600 }}>{guesthouse.contact?.phone || 'Not provided'}</span>
               </div>
 
               <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                 <span style={{ color: 'var(--text-muted)' }}>Email</span>
-                <span style={{ fontWeight: 600 }}>{guesthouse.contact?.email || 'host@example.com'}</span>
+                <span style={{ fontWeight: 600 }}>{guesthouse.contact?.email || 'Not provided'}</span>
               </div>
 
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <span style={{ color: 'var(--text-muted)' }}>Rating</span>
                 <span style={{ fontWeight: 700, color: 'var(--star-gold)', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                  <StarIcon size={16} />
-                  <span>{guesthouse.averageRating ?? '4.9'} ({guesthouse.ratingsCount ?? 128})</span>
+                  <StarIcon size={16} filled />
+                  <span>
+                    {ratings.length > 0
+                      ? `${(ratings.reduce((sum, r) => sum + r.rating, 0) / ratings.length).toFixed(1)} (${ratings.length} ${ratings.length === 1 ? 'review' : 'reviews'})`
+                      : guesthouse.averageRating
+                      ? `${guesthouse.averageRating} (${guesthouse.ratingsCount || 1} reviews)`
+                      : 'No ratings yet'}
+                  </span>
                 </span>
               </div>
             </div>
           </div>
+
+          {/* Customer Reviews for this Stay */}
+          {ratings.length > 0 && (
+            <div
+              style={{
+                background: 'var(--bg-card)',
+                border: '1px solid var(--border-main)',
+                borderRadius: 20,
+                padding: '1.75rem',
+                boxShadow: 'var(--shadow-sm)',
+                marginTop: '1.5rem',
+              }}
+            >
+              <h4 style={{ fontSize: '1.1rem', fontWeight: 700, margin: '0 0 1rem' }}>
+                Customer reviews ({ratings.length})
+              </h4>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
+                {ratings.map((r) => {
+                  const cust = typeof r.customerId === 'object' ? (r.customerId as User) : null;
+                  return (
+                    <div
+                      key={r._id}
+                      style={{
+                        padding: '0.85rem 1rem',
+                        borderRadius: 12,
+                        background: 'var(--bg-card-subtle)',
+                        border: '1px solid var(--border-main)',
+                      }}
+                    >
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.3rem', fontSize: '0.85rem' }}>
+                        <span style={{ fontWeight: 700 }}>{cust?.name || 'Customer'}</span>
+                        <span style={{ color: 'var(--star-gold)', fontWeight: 700 }}>★ {r.rating}</span>
+                      </div>
+                      {r.comment && (
+                        <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>
+                          "{r.comment}"
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
         </div>
       </div>
 

@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { logout, useAuth } from '@/data/auth';
@@ -37,13 +37,15 @@ function Row({ label, value, onPress, last }: RowProps) {
 
 export default function AccountScreen() {
   const router = useRouter();
-  const { user } = useAuth();
+  const { user, restoring } = useAuth();
   const { saved } = useFavourites();
 
   const handleLogout = () => {
-    logout();
+    void logout();
     router.replace('/');
   };
+
+  if (restoring) return <SafeAreaView style={styles.screen}><ActivityIndicator size="large" color={colors.dark} /></SafeAreaView>;
 
   // Guest view: browsing works without an account, so explain what an account adds
   if (!user) {

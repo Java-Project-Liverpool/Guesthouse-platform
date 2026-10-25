@@ -3,6 +3,7 @@ import {
   createGuesthouse,
   getGuesthouseById,
   updateGuesthouse,
+  uploadGuesthouseImage,
 } from '../services/guesthouseService';
 import type { Guesthouse } from '../types';
 
@@ -21,6 +22,14 @@ const AVAILABLE_AMENITIES = [
   'Airport Shuttle',
 ];
 
+const PRESET_PHOTOS = [
+  { label: 'Riverside Maun', url: '/stays/thamalakane-1.jpg' },
+  { label: 'Kubu Baobab Retreat', url: '/stays/kubu-1.jpg' },
+  { label: 'Okavango Delta Camp', url: '/stays/delta-1.jpg' },
+  { label: 'Kalahari Rest Lodge', url: '/stays/kalahari-1.jpg' },
+  { label: 'Boteti Sunset Deck', url: '/stays/boteti-1.jpg' },
+];
+
 export const GuesthouseEdit: React.FC<GuesthouseEditProps> = ({ id }) => {
   const isEditing = Boolean(id);
 
@@ -35,8 +44,15 @@ export const GuesthouseEdit: React.FC<GuesthouseEditProps> = ({ id }) => {
   const [pricePerNight, setPricePerNight] = useState<number | string>(1250);
   const [phone, setPhone] = useState('+267 ');
   const [email, setEmail] = useState('');
+
+  // Image State
   const [logo, setLogo] = useState('');
-  const [galleryInput, setGalleryInput] = useState('');
+  const [gallery, setGallery] = useState<string[]>([]);
+  const [newGalleryUrl, setNewGalleryUrl] = useState('');
+  const [uploadingLogo, setUploadingLogo] = useState(false);
+  const [uploadingGallery, setUploadingGallery] = useState(false);
+  const [imageError, setImageError] = useState('');
+
   const [isVerified, setIsVerified] = useState(false);
   const [isActive, setIsActive] = useState(true);
 
@@ -66,7 +82,7 @@ export const GuesthouseEdit: React.FC<GuesthouseEditProps> = ({ id }) => {
               setEmail(g.contact.email || '');
             }
             setLogo(g.logo || '');
-            setGalleryInput((g.gallery || []).join(', '));
+            setGallery(g.gallery || []);
             setIsVerified(g.verificationStatus === 'verified');
             setIsActive(g.isActive !== false);
           }
@@ -97,15 +113,69 @@ export const GuesthouseEdit: React.FC<GuesthouseEditProps> = ({ id }) => {
     window.dispatchEvent(new PopStateEvent('popstate'));
   };
 
+  // Upload Logo handler
+  const handleLogoFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setImageError('');
+    setUploadingLogo(true);
+    try {
+      const res = await uploadGuesthouseImage(file, 'logo');
+      setLogo(res.url);
+    } catch (err: unknown) {
+      setImageError(err instanceof Error ? err.message : 'Image upload failed.');
+    } finally {
+      setUploadingLogo(false);
+      e.target.value = '';
+    }
+  };
+
+  // Upload Gallery handler
+  const handleGalleryFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setImageError('');
+    setUploadingGallery(true);
+    try {
+      const res = await uploadGuesthouseImage(file, 'gallery');
+      setGallery((prev) => [...prev, res.url]);
+    } catch (err: unknown) {
+      setImageError(err instanceof Error ? err.message : 'Gallery photo upload failed.');
+    } finally {
+      setUploadingGallery(false);
+      e.target.value = '';
+    }
+  };
+
+  const handleAddGalleryUrl = () => {
+    const trimmed = newGalleryUrl.trim();
+    if (!trimmed) return;
+    if (gallery.includes(trimmed)) {
+      setImageError('This image URL is already in the gallery.');
+      return;
+    }
+    setGallery((prev) => [...prev, trimmed]);
+    setNewGalleryUrl('');
+    setImageError('');
+  };
+
+  const handleRemoveGalleryPhoto = (index: number) => {
+    setGallery((prev) => prev.filter((_, i) => i !== index));
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setMessage(null);
-    setLoading(true);
 
-    const galleryList = galleryInput
-      .split(',')
-      .map((item) => item.trim())
-      .filter(Boolean);
+    const trimmedLogo = logo.trim();
+    if (!trimmedLogo) {
+      setMessage({ type: 'error', text: 'A cover image / logo is required.' });
+      return;
+    }
+
+    setLoading(true);
 
     const payload: Partial<Guesthouse> = {
       name: name.trim(),
@@ -114,11 +184,8 @@ export const GuesthouseEdit: React.FC<GuesthouseEditProps> = ({ id }) => {
       city: city.trim(),
       country: country.trim(),
       pricePerNight: Number(pricePerNight) || 0,
-      logo: logo.trim() || 'https://images.unsplash.com/photo-1566073771259-6a8506099945?w=500',
-      gallery: galleryList.length > 0 ? galleryList : [
-        'https://images.unsplash.com/photo-1582719508461-905c673771fd?w=800',
-        'https://images.unsplash.com/photo-1571896349842-33c89424de2d?w=800',
-      ],
+      logo: trimmedLogo,
+      gallery,
       location: {
         latitude: parseFloat(latitude) || -19.9833,
         longitude: parseFloat(longitude) || 23.4167,
@@ -142,7 +209,7 @@ export const GuesthouseEdit: React.FC<GuesthouseEditProps> = ({ id }) => {
 
       setTimeout(() => {
         navigateTo('/guesthouses');
-      }, 1000);
+      }, 900);
     } catch (err: unknown) {
       setMessage({
         type: 'error',
@@ -164,7 +231,7 @@ export const GuesthouseEdit: React.FC<GuesthouseEditProps> = ({ id }) => {
           {isEditing ? 'Edit guesthouse' : 'Register guesthouse'}
         </h2>
         <div style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>
-          Fill in each section, then save
+          Fill in each section with real property details, then save to the database.
         </div>
       </div>
 
@@ -181,6 +248,23 @@ export const GuesthouseEdit: React.FC<GuesthouseEditProps> = ({ id }) => {
           }}
         >
           {message.text}
+        </div>
+      )}
+
+      {imageError && (
+        <div
+          style={{
+            padding: '0.75rem 1rem',
+            borderRadius: 12,
+            marginBottom: '1.5rem',
+            background: 'rgba(239, 68, 68, 0.1)',
+            border: '1px solid var(--danger)',
+            color: 'var(--danger)',
+            fontSize: '0.85rem',
+            fontWeight: 600,
+          }}
+        >
+          {imageError}
         </div>
       )}
 
@@ -405,7 +489,7 @@ export const GuesthouseEdit: React.FC<GuesthouseEditProps> = ({ id }) => {
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
               <div>
                 <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.4rem', color: 'var(--text-muted)' }}>
-                  Price per night (P)
+                  Price per night (Botswana Pula — P)
                 </label>
                 <input
                   type="number"
@@ -470,7 +554,7 @@ export const GuesthouseEdit: React.FC<GuesthouseEditProps> = ({ id }) => {
             </div>
           </div>
 
-          {/* Card 4: Images */}
+          {/* Card 4: Images & Previews */}
           <div
             style={{
               background: 'var(--bg-card)',
@@ -481,50 +565,286 @@ export const GuesthouseEdit: React.FC<GuesthouseEditProps> = ({ id }) => {
             }}
           >
             <h3 style={{ fontSize: '1.15rem', fontWeight: 700, margin: '0 0 1.25rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              <span>🖼️</span> Images
+              <span>🖼️</span> Images & Previews
             </h3>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+              {/* Section 4A: Logo / Cover Image */}
               <div>
-                <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.4rem', color: 'var(--text-muted)' }}>
-                  Upload logo (or Image URL)
-                </label>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.4rem' }}>
+                  <label style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-main)' }}>
+                    Cover photo / Logo <span style={{ color: 'var(--danger)' }}>*</span>
+                  </label>
+                  {logo && (
+                    <button
+                      type="button"
+                      onClick={() => setLogo('')}
+                      style={{
+                        background: 'none',
+                        border: 'none',
+                        color: 'var(--danger)',
+                        fontSize: '0.75rem',
+                        fontWeight: 600,
+                        cursor: 'pointer',
+                      }}
+                    >
+                      Remove
+                    </button>
+                  )}
+                </div>
+
+                {/* Logo Live Preview */}
+                {logo ? (
+                  <div
+                    style={{
+                      height: 160,
+                      borderRadius: 14,
+                      overflow: 'hidden',
+                      position: 'relative',
+                      border: '1px solid var(--border-main)',
+                      background: 'var(--bg-card-subtle)',
+                      marginBottom: '0.75rem',
+                    }}
+                  >
+                    <img
+                      src={logo}
+                      alt="Cover preview"
+                      style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                      onError={(e) => {
+                        (e.currentTarget as HTMLImageElement).src = '/logo.png';
+                      }}
+                    />
+                  </div>
+                ) : (
+                  <div
+                    style={{
+                      height: 100,
+                      borderRadius: 14,
+                      border: '2px dashed var(--border-main)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      color: 'var(--text-muted)',
+                      fontSize: '0.85rem',
+                      marginBottom: '0.75rem',
+                    }}
+                  >
+                    No cover image selected
+                  </div>
+                )}
+
+                <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.5rem' }}>
+                  <label
+                    style={{
+                      padding: '0.55rem 0.95rem',
+                      borderRadius: 10,
+                      background: 'var(--bg-card-subtle)',
+                      border: '1px solid var(--border-main)',
+                      fontSize: '0.8rem',
+                      fontWeight: 600,
+                      cursor: uploadingLogo ? 'not-allowed' : 'pointer',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '0.4rem',
+                    }}
+                  >
+                    📁 {uploadingLogo ? 'Uploading file...' : 'Choose file...'}
+                    <input
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp"
+                      onChange={handleLogoFileUpload}
+                      disabled={uploadingLogo}
+                      style={{ display: 'none' }}
+                    />
+                  </label>
+                </div>
+
                 <input
                   type="text"
                   value={logo}
                   onChange={(e) => setLogo(e.target.value)}
-                  placeholder="https://example.com/logo.jpg"
+                  placeholder="Or paste image URL (e.g. /stays/thamalakane-1.jpg)"
                   style={{
                     width: '100%',
-                    padding: '0.8rem 1rem',
-                    borderRadius: 12,
+                    padding: '0.65rem 0.85rem',
+                    borderRadius: 10,
                     border: '1px solid var(--input-border)',
                     background: 'var(--input-bg)',
                     color: 'var(--text-main)',
+                    fontSize: '0.85rem',
                     outline: 'none',
                   }}
                 />
               </div>
 
+              {/* Section 4B: Gallery Photos */}
               <div>
-                <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.4rem', color: 'var(--text-muted)' }}>
-                  Upload gallery photos (comma-separated URLs)
+                <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 700, marginBottom: '0.4rem', color: 'var(--text-main)' }}>
+                  Gallery Photos ({gallery.length})
                 </label>
-                <input
-                  type="text"
-                  value={galleryInput}
-                  onChange={(e) => setGalleryInput(e.target.value)}
-                  placeholder="https://.../photo1.jpg, https://.../photo2.jpg"
-                  style={{
-                    width: '100%',
-                    padding: '0.8rem 1rem',
-                    borderRadius: 12,
-                    border: '1px solid var(--input-border)',
-                    background: 'var(--input-bg)',
-                    color: 'var(--text-main)',
-                    outline: 'none',
-                  }}
-                />
+
+                {/* Gallery Previews Grid */}
+                {gallery.length > 0 ? (
+                  <div
+                    style={{
+                      display: 'grid',
+                      gridTemplateColumns: 'repeat(3, 1fr)',
+                      gap: '0.5rem',
+                      marginBottom: '0.75rem',
+                    }}
+                  >
+                    {gallery.map((imgUrl, i) => (
+                      <div
+                        key={`${imgUrl}-${i}`}
+                        style={{
+                          height: 80,
+                          borderRadius: 10,
+                          overflow: 'hidden',
+                          position: 'relative',
+                          border: '1px solid var(--border-main)',
+                          background: 'var(--bg-card-subtle)',
+                        }}
+                      >
+                        <img
+                          src={imgUrl}
+                          alt={`Gallery ${i + 1}`}
+                          style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                          onError={(e) => {
+                            (e.currentTarget as HTMLImageElement).src = '/logo.png';
+                          }}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveGalleryPhoto(i)}
+                          title="Remove photo"
+                          style={{
+                            position: 'absolute',
+                            top: 4,
+                            right: 4,
+                            width: 22,
+                            height: 22,
+                            borderRadius: '50%',
+                            background: 'rgba(0,0,0,0.7)',
+                            color: '#fff',
+                            border: 'none',
+                            fontSize: '0.75rem',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            cursor: 'pointer',
+                          }}
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div
+                    style={{
+                      padding: '1rem',
+                      borderRadius: 12,
+                      border: '1px dashed var(--border-main)',
+                      color: 'var(--text-muted)',
+                      fontSize: '0.85rem',
+                      textAlign: 'center',
+                      marginBottom: '0.75rem',
+                    }}
+                  >
+                    No gallery photos added yet.
+                  </div>
+                )}
+
+                <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.5rem' }}>
+                  <label
+                    style={{
+                      padding: '0.55rem 0.95rem',
+                      borderRadius: 10,
+                      background: 'var(--bg-card-subtle)',
+                      border: '1px solid var(--border-main)',
+                      fontSize: '0.8rem',
+                      fontWeight: 600,
+                      cursor: uploadingGallery ? 'not-allowed' : 'pointer',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '0.4rem',
+                    }}
+                  >
+                    📁 {uploadingGallery ? 'Uploading...' : 'Upload photo...'}
+                    <input
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp"
+                      onChange={handleGalleryFileUpload}
+                      disabled={uploadingGallery}
+                      style={{ display: 'none' }}
+                    />
+                  </label>
+                </div>
+
+                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                  <input
+                    type="text"
+                    value={newGalleryUrl}
+                    onChange={(e) => setNewGalleryUrl(e.target.value)}
+                    placeholder="Or add photo URL..."
+                    style={{
+                      flex: 1,
+                      padding: '0.65rem 0.85rem',
+                      borderRadius: 10,
+                      border: '1px solid var(--input-border)',
+                      background: 'var(--input-bg)',
+                      color: 'var(--text-main)',
+                      fontSize: '0.85rem',
+                      outline: 'none',
+                    }}
+                  />
+                  <button
+                    type="button"
+                    onClick={handleAddGalleryUrl}
+                    style={{
+                      padding: '0.65rem 1rem',
+                      borderRadius: 10,
+                      border: 'none',
+                      background: 'var(--primary)',
+                      color: 'var(--primary-text)',
+                      fontWeight: 600,
+                      fontSize: '0.85rem',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    + Add
+                  </button>
+                </div>
+
+                {/* Presets Quick Picker */}
+                <div style={{ marginTop: '0.75rem' }}>
+                  <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '0.35rem' }}>
+                    Quick presets (Botswana stays):
+                  </div>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem' }}>
+                    {PRESET_PHOTOS.map((p) => (
+                      <button
+                        key={p.url}
+                        type="button"
+                        onClick={() => {
+                          if (!logo) setLogo(p.url);
+                          else if (!gallery.includes(p.url)) setGallery((prev) => [...prev, p.url]);
+                        }}
+                        style={{
+                          padding: '0.25rem 0.65rem',
+                          borderRadius: 8,
+                          border: '1px solid var(--border-main)',
+                          background: 'var(--bg-card-subtle)',
+                          color: 'var(--text-main)',
+                          fontSize: '0.75rem',
+                          cursor: 'pointer',
+                        }}
+                      >
+                        + {p.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -547,7 +867,7 @@ export const GuesthouseEdit: React.FC<GuesthouseEditProps> = ({ id }) => {
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div>
                   <div style={{ fontWeight: 600, fontSize: '0.95rem' }}>Verified</div>
-                  <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Show a verified badge</div>
+                  <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Show a verified badge on discovery apps</div>
                 </div>
                 <input
                   type="checkbox"
@@ -559,8 +879,8 @@ export const GuesthouseEdit: React.FC<GuesthouseEditProps> = ({ id }) => {
 
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div>
-                  <div style={{ fontWeight: 600, fontSize: '0.95rem' }}>Visible</div>
-                  <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Highlight on the app home & discovery</div>
+                  <div style={{ fontWeight: 600, fontSize: '0.95rem' }}>Active on platform</div>
+                  <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Travellers can discover this guesthouse</div>
                 </div>
                 <input
                   type="checkbox"
@@ -572,8 +892,8 @@ export const GuesthouseEdit: React.FC<GuesthouseEditProps> = ({ id }) => {
             </div>
           </div>
 
-          {/* Form Actions */}
-          <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end', marginTop: '1rem' }}>
+          {/* Actions */}
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem', marginTop: '0.5rem' }}>
             <button
               type="button"
               onClick={() => navigateTo('/guesthouses')}
@@ -590,7 +910,6 @@ export const GuesthouseEdit: React.FC<GuesthouseEditProps> = ({ id }) => {
             >
               Cancel
             </button>
-
             <button
               type="submit"
               disabled={loading}
@@ -602,12 +921,11 @@ export const GuesthouseEdit: React.FC<GuesthouseEditProps> = ({ id }) => {
                 color: 'var(--primary-text)',
                 fontWeight: 600,
                 fontSize: '0.95rem',
-                cursor: 'pointer',
-                boxShadow: 'var(--shadow-sm)',
+                cursor: loading ? 'not-allowed' : 'pointer',
                 opacity: loading ? 0.7 : 1,
               }}
             >
-              {loading ? 'Saving...' : 'Save guesthouse'}
+              {loading ? 'Saving to database...' : isEditing ? 'Save changes' : 'Register guesthouse'}
             </button>
           </div>
         </div>

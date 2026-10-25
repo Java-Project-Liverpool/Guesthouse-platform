@@ -1,10 +1,10 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Redirect, useRouter } from 'expo-router';
 import { useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { useAuth } from '@/data/auth';
+import { updateProfile, useAuth } from '@/data/auth';
 
 const colors = {
   background: '#F7F5F0',
@@ -19,10 +19,13 @@ const colors = {
 
 export default function EditProfileScreen() {
   const router = useRouter();
-  const { user } = useAuth();
+  const { user, restoring } = useAuth();
   const [name, setName] = useState(user?.name ?? '');
   const [email, setEmail] = useState(user?.email ?? '');
   const [error, setError] = useState('');
+  const [busy, setBusy] = useState(false);
+
+  if (restoring) return <SafeAreaView style={styles.screen}><ActivityIndicator size="large" color={colors.dark} /></SafeAreaView>;
 
   // Only logged-in customers can edit a profile
   if (!user) return <Redirect href="/login" />;
@@ -36,12 +39,15 @@ export default function EditProfileScreen() {
       .join('')
       .toUpperCase() || '?';
 
-  const save = () => {
-    if (!name.trim()) return setError('Enter your full name.');
-    if (!email.includes('@')) return setError('Enter a valid email address.');
+  const save = async () => {
+    if (busy) return;
+    if (name.trim().length < 2) return setError('Enter a name with at least 2 characters.');
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) return setError('Enter a valid email address.');
     setError('');
-    // Not saved yet: needs an update-profile route on the backend and a function in auth.ts
-    router.back();
+    setBusy(true);
+    try { await updateProfile({ name: name.trim(), email: email.trim() }); router.back(); }
+    catch (reason) { setError(reason instanceof Error ? reason.message : 'Could not save your changes.'); }
+    finally { setBusy(false); }
   };
 
   return (
@@ -60,7 +66,7 @@ export default function EditProfileScreen() {
             <Text style={styles.avatarText}>{initials}</Text>
           </View>
           {/* Photo upload needs expo-image-picker, so it is added later */}
-          <Text style={styles.changePhoto}>Change photo</Text>
+          <Text style={styles.changePhoto}>Profile details</Text>
         </View>
 
         <Text style={styles.label}>Full name</Text>
@@ -85,8 +91,8 @@ export default function EditProfileScreen() {
 
         {error !== '' && <Text style={styles.error}>{error}</Text>}
 
-        <Pressable style={styles.primaryButton} onPress={save}>
-          <Text style={styles.primaryText}>Save changes</Text>
+        <Pressable style={styles.primaryButton} onPress={() => void save()} disabled={busy}>
+          {busy ? <ActivityIndicator color="#FFFFFF" /> : <Text style={styles.primaryText}>Save changes</Text>}
         </Pressable>
       </ScrollView>
     </SafeAreaView>

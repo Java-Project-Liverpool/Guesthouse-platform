@@ -1,77 +1,114 @@
+import * as SecureStore from 'expo-secure-store';
+import { Platform } from 'react-native';
 import { useSyncExternalStore } from 'react';
+
+import { ApiError, apiRequest } from '@/data/api';
 
 export type User = { id: string; name: string; email: string; role: string };
 type Session = { user: User; token: string } | null;
+type AuthResponse = { token: string; user: { id?: string; _id?: string; name: string; email: string; role: string } };
 
-// Set in mobile-app/.env.local, for example EXPO_PUBLIC_API_URL=http://localhost:5000
-const API_URL = process.env.EXPO_PUBLIC_API_URL;
-
-// The signed-in user, shared between the screens. Kept in memory only,
-// so you are signed out when the app restarts (the backend token also expires after 1 hour).
+const storageKey = 'dumela-auth-session';
 let session: Session = null;
+let restoring = true;
 const listeners = new Set<() => void>();
 
 function subscribe(listener: () => void) {
   listeners.add(listener);
-  return () => {
-    listeners.delete(listener);
-  };
+  return () => listeners.delete(listener);
 }
 
-function setSession(next: Session) {
-  session = next;
+function notify() {
   listeners.forEach((listener) => listener());
 }
 
-// Sends a POST request to the backend. Returns the JSON, or throws an Error with a readable message.
-async function post(path: string, body: object) {
-  if (!API_URL) {
-    throw new Error('The backend is not connected yet.');
-  }
+function normaliseUser(user: AuthResponse['user']): User {
+  return { id: user.id ?? user._id ?? '', name: user.name, email: user.email, role: user.role };
+}
 
-  let response: Response;
+async function persist(next: Session) {
+  if (Platform.OS === 'web') return;
+  if (next) await SecureStore.setItemAsync(storageKey, JSON.stringify(next));
+  else await SecureStore.deleteItemAsync(storageKey);
+}
+
+async function setSession(next: Session) {
+  session = next;
+  notify();
+  await persist(next);
+}
+
+export async function restoreSession() {
+  let restored: Session = null;
   try {
-    response = await fetch(API_URL + path, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-    });
+    if (Platform.OS !== 'web') {
+      const stored = await SecureStore.getItemAsync(storageKey);
+      if (stored) {
+        const cached = JSON.parse(stored) as Session;
+        if (cached?.token && cached.user) {
+          restored = cached;
+          session = cached;
+        }
+      }
+    }
   } catch {
-    throw new Error('Could not reach the server. Check your connection.');
+    session = null;
+  } finally {
+    restoring = false;
+    notify();
   }
 
-  const data = await response.json().catch(() => ({}));
-
-  if (!response.ok) {
-    // Validation problems come back as { message, errors: { field: text } }
-    const details = data.errors ? Object.values(data.errors).join(' ') : '';
-    throw new Error(details || data.message || 'Something went wrong.');
+  // Show the cached account right away, then refresh it without blocking app launch.
+  if (restored) {
+    void apiRequest<{ user: AuthResponse['user'] }>('/api/auth/me', { token: restored.token })
+      .then(async (result) => {
+        if (session?.token !== restored?.token) return;
+        session = { token: restored.token, user: normaliseUser(result.user) };
+        notify();
+        await persist(session);
+      })
+      .catch(async (error: unknown) => {
+        if (session?.token !== restored?.token) return;
+        if (error instanceof ApiError && (error.status === 401 || error.status === 404)) await logout();
+        // Keep the saved session available while the API is temporarily unreachable.
+      });
   }
-
-  return data;
 }
 
 export async function login(email: string, password: string) {
-  const data = await post('/api/auth/login', { email, password });
-  setSession({ user: data.user, token: data.token });
+  const data = await apiRequest<AuthResponse>('/api/auth/login', {
+    method: 'POST', body: { email, password },
+  });
+  if (!data.token || !data.user) throw new Error('The server did not return a valid sign-in session.');
+  await setSession({ user: normaliseUser(data.user), token: data.token });
 }
 
-// The backend does not return a token when registering, so we log in straight after
 export async function register(name: string, email: string, password: string) {
-  await post('/api/auth/register', { name, email, password });
+  await apiRequest('/api/auth/register', { method: 'POST', body: { name, email, password } });
+  // Public registration creates a customer but does not issue a token.
   await login(email, password);
 }
 
-export function logout() {
-  setSession(null);
+export async function updateProfile(values: { name: string; email: string }) {
+  if (!session) throw new ApiError('Sign in to update your profile.', 401);
+  let result: { user: AuthResponse['user'] };
+  try {
+    result = await apiRequest<{ user: AuthResponse['user'] }>('/api/auth/profile', {
+      method: 'PUT', token: session.token, body: values,
+    });
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 401) await logout();
+    throw error;
+  }
+  await setSession({ ...session, user: normaliseUser(result.user) });
+}
+
+export async function logout() {
+  await setSession(null);
 }
 
 export function useAuth() {
-  const current = useSyncExternalStore(
-    subscribe,
-    () => session,
-    () => session
-  );
-
-  return { user: current?.user ?? null, token: current?.token ?? null };
+  const current = useSyncExternalStore(subscribe, () => session, () => session);
+  const isRestoring = useSyncExternalStore(subscribe, () => restoring, () => restoring);
+  return { user: current?.user ?? null, token: current?.token ?? null, restoring: isRestoring };
 }

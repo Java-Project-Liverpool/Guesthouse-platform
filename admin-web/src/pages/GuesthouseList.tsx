@@ -1,4 +1,5 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
+import { gsap } from 'gsap';
 import {
   BuildingIcon,
   SearchIcon,
@@ -27,13 +28,21 @@ export const GuesthouseList: React.FC = () => {
   const [modalGuesthouse, setModalGuesthouse] = useState<Guesthouse | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
-
   const [refreshTrigger, setRefreshTrigger] = useState(0);
+
+  const tbodyRef = useRef<HTMLTableSectionElement>(null);
+
+  // The listing is re-queried whenever the search inputs change, so the
+  // loading state is reset during render rather than inside the effect.
+  const queryKey = `${searchTerm}|${selectedCity}|${refreshTrigger}`;
+  const [lastQueryKey, setLastQueryKey] = useState(queryKey);
+  if (queryKey !== lastQueryKey) {
+    setLastQueryKey(queryKey);
+    setLoading(true);
+  }
 
   useEffect(() => {
     let isMounted = true;
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setLoading(true);
 
     const timer = setTimeout(() => {
       searchGuesthouses({
@@ -64,6 +73,24 @@ export const GuesthouseList: React.FC = () => {
       clearTimeout(timer);
     };
   }, [searchTerm, selectedCity, refreshTrigger]);
+
+  // GSAP animation for table rows
+  useEffect(() => {
+    if (loading || guesthouses.length === 0 || !tbodyRef.current) return;
+
+    const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (reducedMotion) return;
+
+    const ctx = gsap.context(() => {
+      gsap.fromTo(
+        '.guesthouse-table-row',
+        { opacity: 0, y: 10 },
+        { opacity: 1, y: 0, duration: 0.35, stagger: 0.04, ease: 'power2.out' }
+      );
+    }, tbodyRef);
+
+    return () => ctx.revert();
+  }, [loading, guesthouses]);
 
   // Cities extracted for filter dropdown
   const cities = ['All cities', 'Maun', 'Gaborone', 'Kasane', 'Francistown', 'Okavango Delta'];
@@ -213,7 +240,7 @@ export const GuesthouseList: React.FC = () => {
                 <th style={{ paddingBottom: '1rem', fontWeight: 600, textAlign: 'right' }}>Actions</th>
               </tr>
             </thead>
-            <tbody>
+            <tbody ref={tbodyRef}>
               {loading && (
                 <tr>
                   <td colSpan={6} style={{ padding: '3rem 0', textAlign: 'center', color: 'var(--text-muted)' }}>
@@ -237,6 +264,7 @@ export const GuesthouseList: React.FC = () => {
                   return (
                     <tr
                       key={stay._id}
+                      className="guesthouse-table-row"
                       onClick={() => navigateTo(`/guesthouses/${stay._id}`)}
                       style={{
                         borderBottom: '1px solid var(--border-main)',
@@ -284,8 +312,8 @@ export const GuesthouseList: React.FC = () => {
 
                       <td style={{ padding: '1rem 0', color: 'var(--star-gold)', fontWeight: 600 }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                          <StarIcon size={16} />
-                          <span>{stay.averageRating ?? '4.8'}</span>
+                          <StarIcon size={16} filled={Boolean(stay.averageRating)} />
+                          <span>{stay.averageRating ? stay.averageRating.toFixed(1) : '-'}</span>
                         </div>
                       </td>
 

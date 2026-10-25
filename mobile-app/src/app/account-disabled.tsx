@@ -1,10 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { Linking, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-
-// Placeholder: replace with the team's real support address
-const SUPPORT_EMAIL = 'support@example.com';
 
 const colors = {
   background: '#F7F5F0',
@@ -25,13 +22,11 @@ export default function AccountDisabledScreen() {
         </View>
         <Text style={styles.title}>Account disabled</Text>
         <Text style={styles.body}>
-          Your account has been disabled by an admin. Contact support to find out why.
+          Your account has been disabled by an administrator. Please contact the Dumela Stays team through its official support channel.
         </Text>
 
-        <Pressable
-          style={styles.primaryButton}
-          onPress={() => Linking.openURL('mailto:' + SUPPORT_EMAIL)}>
-          <Text style={styles.primaryText}>Contact support</Text>
+        <Pressable style={styles.primaryButton} onPress={() => router.replace('/login')}>
+          <Text style={styles.primaryText}>Return to sign in</Text>
         </Pressable>
         <Pressable style={styles.outlineButton} onPress={() => router.replace('/')}>
           <Text style={styles.outlineText}>Continue as guest</Text>

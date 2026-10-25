@@ -1,186 +1,163 @@
-import { Asset } from 'expo-asset';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
+
+import { apiRequest } from '@/data/api';
 
 export type Stay = {
   id: string;
   name: string;
   city: string;
-  price: number;
+  country?: string;
+  price?: number;
   rating?: number;
   ratings?: number;
   verified: boolean;
   color: string;
   image?: string;
-  images?: string[];
-  description: string;
+  images: string[];
+  description?: string;
   amenities: string[];
-  latitude: number;
-  longitude: number;
-  phone: string;
-  sample: boolean;
+  latitude?: number;
+  longitude?: number;
+  phone?: string;
+  email?: string;
 };
 
-// What the backend sends for each guesthouse
-type ApiGuesthouse = {
+export type GuesthouseReview = {
+  id: string;
+  name: string;
+  rating: number;
+  comment: string;
+  createdAt?: string;
+};
+
+export type ApiGuesthouse = {
   _id: string;
   name: string;
   logo?: string;
   gallery?: string[];
-  description: string;
+  description?: string;
   amenities?: string[];
-  pricePerNight: number;
-  city: string;
-  location?: { latitude: number; longitude: number };
-  contact?: { phone: string; email: string };
-  verificationStatus: string;
+  pricePerNight?: number;
+  city?: string;
+  country?: string;
+  location?: { latitude?: number; longitude?: number };
+  contact?: { phone?: string; email?: string };
+  verificationStatus?: string;
+  averageRating?: number;
+  ratingsCount?: number;
 };
 
-// Set in mobile-app/.env.local, for example EXPO_PUBLIC_API_URL=http://localhost:5000
-const API_URL = process.env.EXPO_PUBLIC_API_URL;
+type GuesthousesResponse = { guesthouses?: ApiGuesthouse[] };
+const colors = ['#526B5C', '#B87B55', '#7B8062', '#9A725C', '#647A78'];
+let cachedStays: Stay[] | null = null;
+let cachedAt = 0;
+let inFlight: Promise<Stay[]> | null = null;
 
-// Used while there is no photo
-const colorPalette = ['#4F8F9A', '#D98F4E', '#3E6B5E', '#6E8F6A', '#C27A4A'];
-
-const sampleDescription =
-  'A quiet riverside guesthouse with shaded decks, a small pool and sunrise breakfasts. Contact the host directly to check dates and rates.';
-
-// Turns a bundled image into an address the screens can use
-function local(file: number) {
-  return Asset.fromModule(file).uri;
-}
-
-// AI-generated sample photos for the fictional sample guesthouses
-const sampleImages: Record<string, string[]> = {
-  '1': [
-    local(require('@/assets/images/stays/thamalakane-1.jpg')),
-    local(require('@/assets/images/stays/thamalakane-2.jpg')),
-    local(require('@/assets/images/stays/thamalakane-3.jpg')),
-  ],
-  '2': [
-    local(require('@/assets/images/stays/kalahari-1.jpg')),
-    local(require('@/assets/images/stays/kalahari-2.jpg')),
-    local(require('@/assets/images/stays/kalahari-3.jpg')),
-  ],
-  '3': [
-    local(require('@/assets/images/stays/kubu-1.jpg')),
-    local(require('@/assets/images/stays/kubu-2.jpg')),
-    local(require('@/assets/images/stays/kubu-3.jpg')),
-  ],
-  '4': [
-    local(require('@/assets/images/stays/delta-1.jpg')),
-    local(require('@/assets/images/stays/delta-2.jpg')),
-    local(require('@/assets/images/stays/delta-3.jpg')),
-  ],
-   '5': [
-    local(require('@/assets/images/stays/boteti-1.jpg')),
-    local(require('@/assets/images/stays/boteti-2.jpg')),
-    local(require('@/assets/images/stays/boteti-3.jpg')),
-  ],
-};
-
-function makeSample(
-  id: string,
-  name: string,
-  city: string,
-  price: number,
-  rating: number,
-  ratings: number,
-  color: string,
-  latitude: number,
-  longitude: number
-): Stay {
-  const images = sampleImages[id];
-  return {
-    id,
-    name,
-    city,
-    price,
-    rating,
-    ratings,
-    verified: true,
-    color,
-    image: images?.[0],
-    images,
-    description: sampleDescription,
-    amenities: ['Wi-Fi', 'Pool', 'Breakfast', 'Parking'],
-    latitude,
-    longitude,
-    phone: '+26700000000',
-    sample: true,
-  };
-}
-
-export const sampleStays: Stay[] = [
-  makeSample('1', 'Thamalakane River Haven', 'Maun', 1250, 4.9, 128, '#4F8F9A', -19.9833, 23.4167),
-  makeSample('2', 'Kalahari Rest Lodge', 'Kasane', 1400, 4.7, 64, '#D98F4E', -17.8, 25.15),
-  makeSample('3', 'Kubu Island Eco Retreat', 'Gaborone', 950, 4.6, 41, '#3E6B5E', -24.65, 25.91),
-  makeSample('4', 'Delta Reed Camp', 'Maun', 780, 4.4, 33, '#6E8F6A', -19.98, 23.42),
-  makeSample('5', 'Boteti Sunset Lodge', 'Maun', 1100, 4.6, 52, '#C27A4A', -20.0, 23.45),
-];
-
-// Turns a backend guesthouse into the shape the screens use
-function toStay(item: ApiGuesthouse, index: number): Stay {
-  const images =
-    item.gallery && item.gallery.length > 0 ? item.gallery : item.logo ? [item.logo] : undefined;
-
+export function toStay(item: ApiGuesthouse, index = 0): Stay {
+  const images = [...(item.gallery ?? []), ...(item.logo ? [item.logo] : [])].filter(
+    (url, position, all) => typeof url === 'string' && url.length > 0 && all.indexOf(url) === position
+  );
+  const ratingCount = Number(item.ratingsCount);
+  const averageRating = Number(item.averageRating);
   return {
     id: item._id,
     name: item.name,
-    city: item.city,
-    price: item.pricePerNight,
+    city: item.city ?? '',
+    country: item.country,
+    ...(Number.isFinite(item.pricePerNight) ? { price: item.pricePerNight } : {}),
+    ...(ratingCount > 0 && Number.isFinite(averageRating)
+      ? { rating: averageRating, ratings: ratingCount }
+      : {}),
     verified: item.verificationStatus === 'verified',
-    color: colorPalette[index % colorPalette.length],
-    image: images?.[0],
+    color: colors[index % colors.length],
+    image: images[0],
     images,
     description: item.description,
-    amenities: item.amenities ?? [],
-    latitude: item.location?.latitude ?? 0,
-    longitude: item.location?.longitude ?? 0,
-    phone: item.contact?.phone ?? '',
-    sample: false,
+    amenities: Array.isArray(item.amenities) ? item.amenities : [],
+    ...(Number.isFinite(item.location?.latitude) ? { latitude: item.location?.latitude } : {}),
+    ...(Number.isFinite(item.location?.longitude) ? { longitude: item.location?.longitude } : {}),
+    phone: item.contact?.phone,
+    email: item.contact?.email,
   };
 }
 
-// Loads the guesthouses. Falls back to sample data if the backend is not set up or not reachable.
-export function useStays() {
-  const [stays, setStays] = useState<Stay[]>(API_URL ? [] : sampleStays);
-  const [loading, setLoading] = useState(Boolean(API_URL));
-  const [usingSample, setUsingSample] = useState(!API_URL);
+export async function getStay(id: string): Promise<Stay> {
+  const result = await apiRequest<{ guesthouse?: ApiGuesthouse }>(`/api/guesthouses/${encodeURIComponent(id)}`);
+  if (!result.guesthouse?._id) throw new Error('This guesthouse could not be found.');
+  return toStay(result.guesthouse, 0);
+}
 
-  useEffect(() => {
-    if (!API_URL) return;
-
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 6000);
-
-    fetch(API_URL + '/api/guesthouses', { signal: controller.signal })
-      .then((response) => {
-        if (!response.ok) throw new Error('Request failed');
-        return response.json();
-      })
-      .then((data: { guesthouses: ApiGuesthouse[] }) => {
-        if (data.guesthouses.length > 0) {
-          setStays(data.guesthouses.map(toStay));
-          setUsingSample(false);
-        } else {
-          setStays(sampleStays);
-          setUsingSample(true);
-        }
-      })
-      .catch(() => {
-        setStays(sampleStays);
-        setUsingSample(true);
-      })
-      .finally(() => {
-        clearTimeout(timer);
-        setLoading(false);
-      });
-
-    return () => {
-      clearTimeout(timer);
-      controller.abort();
+export async function getStayReviews(id: string): Promise<GuesthouseReview[]> {
+  const result = await apiRequest<{ ratings?: Record<string, unknown>[] }>(
+    `/api/guesthouses/${encodeURIComponent(id)}/ratings`
+  );
+  return (result.ratings ?? []).map((item) => {
+    const customer = item.customerId;
+    const name = customer && typeof customer === 'object' && 'name' in customer ? customer.name : 'Guest';
+    return {
+      id: String(item._id ?? ''),
+      name: typeof name === 'string' ? name : 'Guest',
+      rating: Number(item.rating),
+      comment: typeof item.comment === 'string' ? item.comment : '',
+      createdAt: typeof item.createdAt === 'string' ? item.createdAt : undefined,
     };
+  });
+}
+
+export async function submitStayReview(id: string, token: string, rating: number, comment: string) {
+  return apiRequest(`/api/guesthouses/${encodeURIComponent(id)}/ratings`, {
+    method: 'POST', token, body: { rating, comment },
+  });
+}
+
+function loadStays(force: boolean): Promise<Stay[]> {
+  if (!force && cachedStays && Date.now() - cachedAt < 60_000) return Promise.resolve(cachedStays);
+  if (!force && inFlight) return inFlight;
+  const request = apiRequest<GuesthousesResponse>('/api/guesthouses/search?sortBy=recent&limit=100')
+    .then((result) => {
+      const items = Array.isArray(result.guesthouses) ? result.guesthouses : [];
+      cachedStays = items.filter((item) => typeof item._id === 'string' && Boolean(item.name)).map(toStay);
+      cachedAt = Date.now();
+      return cachedStays;
+    })
+    .finally(() => { if (inFlight === request) inFlight = null; });
+  inFlight = request;
+  return request;
+}
+
+export function useStays() {
+  const [stays, setStays] = useState<Stay[]>(cachedStays ?? []);
+  const [loading, setLoading] = useState(!cachedStays);
+  const [error, setError] = useState<string | null>(null);
+  const [attempt, setAttempt] = useState(0);
+
+  const retry = useCallback(() => {
+    setLoading(true);
+    setError(null);
+    setAttempt((value) => value + 1);
   }, []);
 
-  return { stays, loading, usingSample };
+  useEffect(() => {
+    let active = true;
+    if (cachedStays && attempt === 0 && Date.now() - cachedAt < 60_000) {
+      return () => { active = false; };
+    }
+    {
+      loadStays(attempt > 0)
+      .then((items) => {
+        if (!active) return;
+        setStays(items);
+        setError(null);
+      })
+      .catch((reason: unknown) => {
+        if (active) setError(reason instanceof Error ? reason.message : 'Could not load guesthouses.');
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+    }
+    return () => { active = false; };
+  }, [attempt]);
+
+  return { stays, loading, error, retry };
 }

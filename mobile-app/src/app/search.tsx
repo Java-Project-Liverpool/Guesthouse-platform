@@ -3,7 +3,6 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useState } from 'react';
 import {
   ActivityIndicator,
-  Image,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -14,6 +13,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import FilterSheet, { countActiveFilters, defaultFilters, type Filters } from '@/components/filter-sheet';
+import StayImage from '@/components/stay-image';
 import { useStays } from '@/data/stays';
 
 const colors = {
@@ -41,13 +41,11 @@ function formatPrice(price: number) {
 export default function SearchScreen() {
   const router = useRouter();
   const { q, filter } = useLocalSearchParams<{ q?: string; filter?: string }>();
-  const { stays, loading } = useStays();
+  const { stays, loading, error, retry } = useStays();
   const [query, setQuery] = useState(q ?? '');
   const [showResults, setShowResults] = useState(Boolean(q) || filter === '1');
   const [filters, setFilters] = useState<Filters>(defaultFilters);
   const [sheetOpen, setSheetOpen] = useState(filter === '1');
-  // Recent searches are kept in memory only, so they reset when the app restarts
-  const [recent, setRecent] = useState(['Maun', 'Kasane lodge', 'Gaborone']);
 
   const cities = Array.from(new Set(stays.map((stay) => stay.city)));
   const amenityOptions = Array.from(new Set(stays.flatMap((stay) => stay.amenities)));
@@ -59,9 +57,6 @@ export default function SearchScreen() {
     if (!clean) return;
     setQuery(clean);
     setShowResults(true);
-    setRecent((current) =>
-      [clean, ...current.filter((item) => item.toLowerCase() !== clean.toLowerCase())].slice(0, 5)
-    );
   };
 
   const clearSearch = () => {
@@ -73,13 +68,13 @@ export default function SearchScreen() {
   const results = stays
     .filter((stay) => (stay.name + ' ' + stay.city).toLowerCase().includes(text))
     .filter((stay) => filters.city === 'All' || stay.city === filters.city)
-    .filter((stay) => filters.maxPrice === null || stay.price <= filters.maxPrice)
-    .filter((stay) => (stay.rating ?? 0) >= filters.minRating)
+    .filter((stay) => filters.maxPrice === null || (stay.price !== undefined && stay.price <= filters.maxPrice))
+    .filter((stay) => filters.minRating === 0 || (stay.rating !== undefined && stay.rating >= filters.minRating))
     .filter((stay) => filters.amenities.every((name) => stay.amenities.includes(name)))
     .sort((a, b) => {
-      if (filters.sort === 'cheapest') return a.price - b.price;
-      if (filters.sort === 'expensive') return b.price - a.price;
-      return (b.rating ?? 0) - (a.rating ?? 0);
+      if (filters.sort === 'cheapest') return (a.price ?? Number.POSITIVE_INFINITY) - (b.price ?? Number.POSITIVE_INFINITY);
+      if (filters.sort === 'expensive') return (b.price ?? Number.NEGATIVE_INFINITY) - (a.price ?? Number.NEGATIVE_INFINITY);
+      return (b.rating ?? Number.NEGATIVE_INFINITY) - (a.rating ?? Number.NEGATIVE_INFINITY);
     });
 
   const isCity = cities.some((city) => city.toLowerCase() === text);
@@ -96,7 +91,7 @@ export default function SearchScreen() {
   // Back arrow: leave the screen, or return to the search view if we typed the search here
   const goBack = () => (q || filter ? router.back() : setShowResults(false));
 
-  // Search view: recent searches and popular cities
+  // Suggestions only include locations present in actual listings.
   if (!showResults) {
     return (
       <SafeAreaView style={styles.screen}>
@@ -120,28 +115,6 @@ export default function SearchScreen() {
             </Pressable>
           </View>
 
-          {recent.length > 0 && (
-            <>
-              <View style={styles.sectionHeader}>
-                <Text style={styles.sectionTitle}>Recent searches</Text>
-                <Pressable onPress={() => setRecent([])}>
-                  <Text style={styles.clear}>Clear</Text>
-                </Pressable>
-              </View>
-              {recent.map((item) => (
-                <View key={item} style={styles.recentRow}>
-                  <Pressable style={styles.recentMain} onPress={() => search(item)}>
-                    <Ionicons name="time-outline" size={22} color={colors.text} />
-                    <Text style={styles.recentText}>{item}</Text>
-                  </Pressable>
-                  <Pressable onPress={() => setRecent(recent.filter((other) => other !== item))}>
-                    <Ionicons name="close" size={22} color={colors.text} />
-                  </Pressable>
-                </View>
-              ))}
-            </>
-          )}
-
           <Text style={[styles.sectionTitle, styles.popularTitle]}>Popular cities</Text>
           <View style={styles.cityChips}>
             {cities.map((city) => (
@@ -151,6 +124,9 @@ export default function SearchScreen() {
               </Pressable>
             ))}
           </View>
+          {!loading && !cities.length && <Text style={styles.emptyText}>Locations will appear here when guesthouses are listed.</Text>}
+          {loading && <ActivityIndicator color={colors.dark} />}
+          {error && <><Text style={styles.emptyText}>{error}</Text><Pressable onPress={retry}><Text style={styles.clear}>Try again</Text></Pressable></>}
         </ScrollView>
       </SafeAreaView>
     );
@@ -203,7 +179,7 @@ export default function SearchScreen() {
 
         {!loading && results.length > 0 && <Text style={styles.count}>{countText}</Text>}
 
-        {!loading && results.length === 0 && (
+        {!loading && !error && results.length === 0 && (
           <View style={styles.empty}>
             <Text style={styles.emptyTitle}>No guesthouses found</Text>
             <Text style={styles.emptyText}>Try another name or location.</Text>
@@ -213,23 +189,21 @@ export default function SearchScreen() {
           </View>
         )}
 
+        {error && <View style={styles.empty}><Text style={styles.emptyText}>{error}</Text><Pressable onPress={retry}><Text style={styles.clear}>Try again</Text></Pressable></View>}
+
         {results.map((stay) => (
           <Pressable
             key={stay.id}
             style={styles.resultCard}
             onPress={() => router.push({ pathname: '/details', params: { id: stay.id } })}>
-            <View style={[styles.thumb, { backgroundColor: stay.color }]}>
-              {stay.image ? (
-                <Image source={{ uri: stay.image }} style={styles.thumbImage} resizeMode="cover" />
-              ) : null}
-            </View>
+            <StayImage uri={stay.image} color={stay.color} style={styles.thumb} />
             <View style={styles.resultInfo}>
               <Text style={styles.resultName} numberOfLines={2}>
                 {stay.name}
               </Text>
-              <Text style={styles.resultCity}>{stay.city}, Botswana</Text>
+              <Text style={styles.resultCity}>{[stay.city, stay.country].filter(Boolean).join(', ')}</Text>
               <View style={styles.priceRow}>
-                <Text style={styles.resultPrice}>{formatPrice(stay.price)}</Text>
+                {stay.price !== undefined && <Text style={styles.resultPrice}>{formatPrice(stay.price)}</Text>}
                 {stay.rating !== undefined && (
                   <View style={styles.rating}>
                     <Ionicons name="star" size={14} color={colors.star} />
