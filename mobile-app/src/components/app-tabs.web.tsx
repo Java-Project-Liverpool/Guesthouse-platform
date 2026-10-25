@@ -37,8 +37,6 @@ export default function AppTabs() {
             <TabButton>Account</TabButton>
           </TabTrigger>
           {/* Screens that are not tabs */}
-                    {/* Screens that are not tabs */}
-          <TabTrigger name="login" href="/login" style={{ display: 'none' }} />
           <TabTrigger name="details" href="/details" style={{ display: 'none' }} />
           <TabTrigger name="search" href="/search" style={{ display: 'none' }} />
           <TabTrigger name="explore" href="/explore" style={{ display: 'none' }} />
