@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Image,
@@ -15,6 +15,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import LoginPrompt from '@/components/login-prompt';
+import StayImage from '@/components/stay-image';
 import { useAuth } from '@/data/auth';
 import { useStays } from '@/data/stays';
 import { useFavourites } from '@/data/favourites';
@@ -40,32 +41,21 @@ function formatPrice(price: number) {
   return 'P' + price.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
 }
 
-// Photo area with the heart button (and the price pill on featured cards)
+// Photo area keeps only listing information; the save control sits beside the card press target.
 function StayPhoto({
   color,
   image,
   height,
   price,
-  saved,
-  onSave,
 }: {
   color: string;
   image?: string;
   height: number;
   price?: number;
-  saved: boolean;
-  onSave: () => void;
 }) {
   return (
     <View style={[styles.photo, { backgroundColor: color, height }]}>
-      {image ? <Image source={{ uri: image }} style={styles.photoImage} resizeMode="cover" /> : null}
-      <Pressable style={styles.heartButton} onPress={onSave}>
-        <Ionicons
-          name={saved ? 'heart' : 'heart-outline'}
-          size={22}
-          color={saved ? colors.heart : colors.dark}
-        />
-      </Pressable>
+      <StayImage uri={image} color={color} style={StyleSheet.absoluteFill} />
       {price !== undefined && (
         <View style={styles.pricePill}>
           <Text style={styles.pricePillText}>{formatPrice(price)} / night</Text>
@@ -84,9 +74,19 @@ function Rating({ value }: { value: number }) {
   );
 }
 
+function StaySkeleton({ width = 294, height = 203 }: { width?: number | 'full'; height?: number }) {
+  return (
+    <View style={[styles.skeletonCard, { width: width === 'full' ? '100%' : width }]} accessibilityLabel="Loading guesthouse">
+      <View style={[styles.skeletonPhoto, { height }]} />
+      <View style={styles.skeletonLine} />
+      <View style={[styles.skeletonLine, styles.skeletonShort]} />
+    </View>
+  );
+}
+
 export default function HomeScreen() {
   const router = useRouter();
-  const { stays, loading, usingSample } = useStays();
+  const { stays, loading, error, retry } = useStays();
   const [city, setCity] = useState('All');
   const [sort, setSort] = useState<'cheapest' | 'rated'>('cheapest');
   const [query, setQuery] = useState('');
@@ -95,18 +95,28 @@ export default function HomeScreen() {
   const [promptOpen, setPromptOpen] = useState(false);
 
   // Guests get the "Log in to save this stay" sheet instead of saving
-  const save = (id: string) => (user ? toggleSaved(id) : setPromptOpen(true));
+  const save = (id: string, listing?: (typeof stays)[number]) => {
+    if (!user) return setPromptOpen(true);
+    void toggleSaved(id, listing).catch((reason: unknown) => {
+      setPromptOpen(false);
+      setSaveError(reason instanceof Error ? reason.message : 'Could not update favourites.');
+    });
+  };
 
   const openStay = (id: string) => router.push({ pathname: '/details', params: { id } });
 
-  const cities = ['All', ...Array.from(new Set(stays.map((stay) => stay.city)))];
+  const [saveError, setSaveError] = useState('');
+  const cities = useMemo(() => ['All', ...Array.from(new Set(stays.map((stay) => stay.city).filter(Boolean)))], [stays]);
   const verifiedStays = stays.filter((stay) => stay.verified);
   const featured = (verifiedStays.length > 0 ? verifiedStays : stays).slice(0, 4);
 
   const shown = stays
     .filter((stay) => city === 'All' || stay.city === city)
     .filter((stay) => (stay.name + ' ' + stay.city).toLowerCase().includes(query.toLowerCase()))
-    .sort((a, b) => (sort === 'cheapest' ? a.price - b.price : (b.rating ?? 0) - (a.rating ?? 0)));
+    .sort((a, b) => {
+      if (sort === 'cheapest') return (a.price ?? Number.POSITIVE_INFINITY) - (b.price ?? Number.POSITIVE_INFINITY);
+      return (b.rating ?? Number.NEGATIVE_INFINITY) - (a.rating ?? Number.NEGATIVE_INFINITY);
+    });
 
   return (
     <SafeAreaView style={styles.screen}>
@@ -119,7 +129,7 @@ export default function HomeScreen() {
             </View>
             <View>
               <Text style={styles.greeting}>Dumela</Text>
-              <Text style={styles.greetingBold}>Welcome back</Text>
+              <Text style={styles.greetingBold}>{user ? `Welcome back, ${user.name.split(' ')[0]}` : 'Find your next stay'}</Text>
             </View>
           </View>
           <Pressable style={styles.profileButton} onPress={() => router.push('/account')}>
@@ -144,6 +154,8 @@ export default function HomeScreen() {
           </View>
           <Pressable
             style={styles.filterButton}
+            accessibilityRole="button"
+            accessibilityLabel="Open search filters"
             onPress={() => router.push({ pathname: '/search', params: { filter: '1' } })}>
             <Ionicons name="filter-outline" size={22} color="#FFFFFF" />
           </Pressable>
@@ -165,35 +177,48 @@ export default function HomeScreen() {
           ))}
         </ScrollView>
 
-        {loading && <ActivityIndicator style={styles.loader} color={colors.dark} />}
+        {loading && <View style={styles.loadingNotice}><ActivityIndicator color={colors.dark} /><Text style={styles.cardSubtitle}>Finding stays from our guesthouse partners…</Text></View>}
+        {error && !loading && (
+          <View style={[styles.empty, styles.padded]}>
+            <Text style={styles.emptyTitle}>We couldn’t load stays</Text>
+            <Text style={styles.cardSubtitle}>{error} The first request after a quiet period can take a little longer.</Text>
+            <Pressable onPress={retry} accessibilityRole="button" style={styles.retryButton}><Text style={styles.retryText}>Try again</Text></Pressable>
+          </View>
+        )}
 
         {/* Featured stays */}
         <View style={[styles.sectionHeader, styles.padded]}>
           <Text style={styles.sectionTitle}>Featured stays</Text>
-          <Text style={styles.seeAll}>See all</Text>
+          <Pressable onPress={() => router.push('/search')}><Text style={styles.seeAll}>See all</Text></Pressable>
         </View>
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.featuredList}>
+          {loading && <><StaySkeleton /><StaySkeleton /></>}
           {featured.map((stay) => (
-            <Pressable key={stay.id} style={styles.featuredCard} onPress={() => openStay(stay.id)}>
+            <View key={stay.id} style={styles.featuredCard}>
+              <Pressable onPress={() => openStay(stay.id)} accessibilityRole="button" accessibilityLabel={`View ${stay.name}`}>
               <StayPhoto
                 color={stay.color}
                 image={stay.image}
                 height={203}
                 price={stay.price}
-                saved={saved.includes(stay.id)}
-                onSave={() => save(stay.id)}
               />
+              </Pressable>
+              <Pressable style={styles.heartButton} onPress={() => save(stay.id, stay)} accessibilityRole="button" accessibilityLabel={`${saved.includes(stay.id) ? 'Remove' : 'Add'} ${stay.name} ${saved.includes(stay.id) ? 'from' : 'to'} favourites`}>
+                <Ionicons name={saved.includes(stay.id) ? 'heart' : 'heart-outline'} size={22} color={saved.includes(stay.id) ? colors.heart : colors.dark} />
+              </Pressable>
+              <Pressable onPress={() => openStay(stay.id)}>
               <View style={styles.cardTitleRow}>
                 <Text style={styles.cardTitle} numberOfLines={1}>
                   {stay.name}
                 </Text>
                 {stay.rating !== undefined && <Rating value={stay.rating} />}
               </View>
-              <Text style={styles.cardSubtitle}>{stay.city}, Botswana</Text>
-            </Pressable>
+              <Text style={styles.cardSubtitle}>{[stay.city, stay.country].filter(Boolean).join(', ')}</Text>
+              </Pressable>
+            </View>
           ))}
         </ScrollView>
 
@@ -211,29 +236,34 @@ export default function HomeScreen() {
           ))}
         </View>
 
-        {usingSample && !loading && (
-          <Text style={[styles.sampleNote, styles.padded]}>
-            Showing sample guesthouses (backend not connected)
-          </Text>
-        )}
-
         {/* Results */}
         <View style={styles.padded}>
-          {!loading && shown.length === 0 && (
+          {loading && <><StaySkeleton width="full" height={172} /><StaySkeleton width="full" height={172} /></>}
+          {!loading && !error && stays.length === 0 && (
+            <View style={styles.empty}>
+              <Text style={styles.emptyTitle}>A quieter kind of discovery</Text>
+              <Text style={styles.cardSubtitle}>There are no guesthouses listed yet. Check back soon.</Text>
+            </View>
+          )}
+          {!loading && !error && stays.length > 0 && shown.length === 0 && (
             <View style={styles.empty}>
               <Text style={styles.emptyTitle}>No guesthouses found</Text>
               <Text style={styles.cardSubtitle}>Try another name or location.</Text>
             </View>
           )}
           {shown.map((stay) => (
-            <Pressable key={stay.id} style={styles.listCard} onPress={() => openStay(stay.id)}>
+            <View key={stay.id} style={styles.listCard}>
+              <Pressable onPress={() => openStay(stay.id)} accessibilityRole="button" accessibilityLabel={`View ${stay.name}`}>
               <StayPhoto
                 color={stay.color}
                 image={stay.image}
                 height={172}
-                saved={saved.includes(stay.id)}
-                onSave={() => save(stay.id)}
               />
+              </Pressable>
+              <Pressable style={styles.heartButton} onPress={() => save(stay.id, stay)} accessibilityRole="button" accessibilityLabel={`${saved.includes(stay.id) ? 'Remove' : 'Add'} ${stay.name} ${saved.includes(stay.id) ? 'from' : 'to'} favourites`}>
+                <Ionicons name={saved.includes(stay.id) ? 'heart' : 'heart-outline'} size={22} color={saved.includes(stay.id) ? colors.heart : colors.dark} />
+              </Pressable>
+              <Pressable onPress={() => openStay(stay.id)}>
               <View style={styles.cardTitleRow}>
                 <Text style={styles.cardTitle} numberOfLines={1}>
                   {stay.name}
@@ -243,15 +273,16 @@ export default function HomeScreen() {
               <View style={styles.cardTitleRow}>
                 <View style={styles.row}>
                   <Ionicons name="location-outline" size={16} color={colors.muted} />
-                  <Text style={styles.cardSubtitle}>{stay.city}, Botswana</Text>
+                  <Text style={styles.cardSubtitle}>{[stay.city, stay.country].filter(Boolean).join(', ')}</Text>
                 </View>
-                <Text style={styles.price}>
-                  {formatPrice(stay.price)} <Text style={styles.perNight}>/ night</Text>
-                </Text>
+                {stay.price !== undefined && <Text style={styles.price}>{formatPrice(stay.price)} <Text style={styles.perNight}>/ night</Text></Text>}
               </View>
-            </Pressable>
+              </Pressable>
+            </View>
           ))}
         </View>
+
+        {saveError !== '' && <Text style={[styles.cardSubtitle, styles.padded]}>{saveError}</Text>}
       </ScrollView>
 
       <LoginPrompt visible={promptOpen} onClose={() => setPromptOpen(false)} />
@@ -345,7 +376,7 @@ const styles = StyleSheet.create({
   sectionTitle: { fontSize: 20, fontWeight: '800', color: colors.text },
   seeAll: { fontSize: 14, fontWeight: '700', color: colors.muted },
   featuredList: { paddingHorizontal: 20, gap: 14, marginBottom: 24 },
-  featuredCard: { width: 294 },
+  featuredCard: { width: 294, position: 'relative' },
 
   // Cards
   photo: { borderRadius: 20, marginBottom: 12, overflow: 'hidden' },
@@ -361,6 +392,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  retryButton: { marginTop: 14, backgroundColor: colors.dark, paddingHorizontal: 20, paddingVertical: 12, borderRadius: 14 },
+  retryText: { color: '#FFFFFF', fontWeight: '800' },
   pricePill: {
     position: 'absolute',
     left: 12,
@@ -409,8 +442,12 @@ const styles = StyleSheet.create({
   sortTextActive: { color: '#FFFFFF' },
 
   // Results
-  sampleNote: { fontSize: 13, color: colors.muted, marginBottom: 14 },
-  listCard: { marginBottom: 24 },
+  listCard: { marginBottom: 24, position: 'relative' },
   empty: { alignItems: 'center', paddingVertical: 40, gap: 4 },
   emptyTitle: { fontSize: 18, fontWeight: '800', color: colors.text },
+  loadingNotice: { alignItems: 'center', gap: 10, marginVertical: 10 },
+  skeletonCard: { marginRight: 14 },
+  skeletonPhoto: { backgroundColor: '#E6E8E2', borderRadius: 20, marginBottom: 12 },
+  skeletonLine: { height: 14, width: '72%', borderRadius: 8, backgroundColor: '#E6E8E2', marginBottom: 8 },
+  skeletonShort: { width: '42%', height: 11 },
 });

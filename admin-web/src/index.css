@@ -126,19 +126,80 @@ input, textarea, select {
   font-family: inherit;
 }
 
+/* The track holds four identical location copies, so shifting it by exactly
+   one quarter (-25%) lands on the same visual position and loops seamlessly. */
 @keyframes carousel-scroll {
   0% { transform: translateX(0); }
-  100% { transform: translateX(-50%); }
+  100% { transform: translateX(-25%); }
 }
 
 .carousel-track {
   display: flex;
   width: max-content;
-  animation: carousel-scroll 24s linear infinite;
+  animation: carousel-scroll 36s linear infinite;
   will-change: transform;
+  outline-offset: 4px;
+}
+
+.carousel-copy {
+  white-space: nowrap;
+}
+
+/* Landing page chrome */
+.landing-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1.25rem 2rem;
+}
+
+.landing-brand {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  cursor: pointer;
+  min-width: 0;
+}
+
+.landing-brand-name {
+  font-size: 1.3rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--text-main);
+  white-space: nowrap;
+}
+
+.landing-nav {
+  display: flex;
+  align-items: center;
+  gap: 1.75rem;
+}
+
+.landing-nav-links {
+  display: flex;
+  align-items: center;
+  gap: 1.75rem;
+}
+
+@media (max-width: 900px) {
+  .landing-nav-links {
+    display: none;
+  }
+}
+
+@media (max-width: 560px) {
+  .landing-header {
+    padding: 0.9rem 1.1rem;
+  }
+
+  .landing-brand-name {
+    font-size: 1.1rem;
+  }
 }
 
 .carousel-track:hover,
+.carousel-track:focus-visible,
 .carousel-track:focus-within {
   animation-play-state: paused;
 }
@@ -146,5 +207,20 @@ input, textarea, select {
 @media (prefers-reduced-motion: reduce) {
   .carousel-track {
     animation: none;
+    width: 100%;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  /* Only the first copy is needed when the ribbon does not scroll. */
+  .carousel-track .carousel-copy:not(:first-child) {
+    display: none;
+  }
+
+  .carousel-copy {
+    flex-wrap: wrap;
+    justify-content: center;
+    row-gap: 0.75rem;
+    white-space: normal;
   }
 }

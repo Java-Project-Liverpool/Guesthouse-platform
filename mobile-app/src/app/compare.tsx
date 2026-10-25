@@ -49,8 +49,12 @@ export default function CompareScreen() {
   }
 
   const pair = [first, second];
-  const cheapest = first.price <= second.price ? first.id : second.id;
-  const topRated = (first.rating ?? 0) >= (second.rating ?? 0) ? first.id : second.id;
+  const cheapest = first.price !== undefined && second.price !== undefined
+    ? (first.price <= second.price ? first.id : second.id)
+    : null;
+  const topRated = first.rating !== undefined && second.rating !== undefined
+    ? (first.rating >= second.rating ? first.id : second.id)
+    : null;
 
   const openStay = (id: string) => router.push({ pathname: '/details', params: { id } });
 
@@ -85,7 +89,7 @@ export default function CompareScreen() {
           <View style={styles.columns}>
             {pair.map((stay) => (
               <View key={stay.id} style={styles.cell}>
-                <Text style={styles.value}>{formatPrice(stay.price)}</Text>
+                <Text style={styles.value}>{stay.price === undefined ? '—' : formatPrice(stay.price)}</Text>
                 {stay.id === cheapest && (
                   <View style={styles.tag}>
                     <Text style={styles.tagText}>Cheapest</Text>

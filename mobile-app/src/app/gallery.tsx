@@ -1,8 +1,8 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
-  Image,
+  ActivityIndicator,
   Pressable,
   ScrollView,
   Share,
@@ -15,7 +15,8 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { useStays } from '@/data/stays';
+import StayImage from '@/components/stay-image';
+import { getStay, type Stay } from '@/data/stays';
 
 const colors = {
   background: '#0B0F0D',
@@ -28,18 +29,28 @@ export default function GalleryScreen() {
   const router = useRouter();
   const { width } = useWindowDimensions();
   const { id } = useLocalSearchParams<{ id?: string }>();
-  const { stays } = useStays();
   const pager = useRef<ScrollView>(null);
   const [index, setIndex] = useState(0);
+  const [stay, setStay] = useState<Stay | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
-  const stay = stays.find((item) => item.id === id) ?? stays[0];
-  if (!stay) return null;
+  useEffect(() => {
+    let active = true;
+    if (!id) return () => { active = false; };
+    Promise.resolve().then(() => getStay(id))
+      .then((item) => { if (active) setStay(item); })
+      .catch((reason: unknown) => { if (active) setError(reason instanceof Error ? reason.message : 'Could not load these photos.'); })
+      .finally(() => { if (active) setLoading(false); });
+    return () => { active = false; };
+  }, [id]);
+
+  if (loading && id) return <SafeAreaView style={styles.screen}><ActivityIndicator color={colors.white} size="large" /></SafeAreaView>;
+  if (!stay) return <SafeAreaView style={styles.screen}><View style={styles.inner}><Pressable style={styles.roundButton} onPress={() => router.back()}><Ionicons name="close" size={22} color={colors.white} /></Pressable><Text style={styles.counter}>{error || (!id ? 'This photo gallery is missing its listing.' : 'This guesthouse is unavailable.')}</Text></View></SafeAreaView>;
 
   // Uses the stay's gallery if it has one, otherwise just its main photo.
   // A stay with no photos shows its colour block.
-  const gallery = (stay as { images?: string[] }).images;
-  const photos: (string | undefined)[] =
-    gallery && gallery.length > 0 ? gallery : [stay.image];
+  const photos: (string | undefined)[] = stay.images.length > 0 ? stay.images : [undefined];
 
   const pageWidth = Math.min(width, 480);
   const photoWidth = pageWidth - 40;
@@ -82,9 +93,7 @@ export default function GalleryScreen() {
           {photos.map((photo, i) => (
             <View key={i} style={[styles.page, { width: pageWidth }]}>
               <View style={[styles.photo, { width: photoWidth, backgroundColor: stay.color }]}>
-                {photo ? (
-                  <Image source={{ uri: photo }} style={styles.photoImage} resizeMode="cover" />
-                ) : null}
+                <StayImage uri={photo} color={stay.color} style={StyleSheet.absoluteFill} />
               </View>
             </View>
           ))}
@@ -104,9 +113,7 @@ export default function GalleryScreen() {
                     { backgroundColor: stay.color },
                     i === index && styles.thumbActive,
                   ]}>
-                  {photo ? (
-                    <Image source={{ uri: photo }} style={styles.photoImage} resizeMode="cover" />
-                  ) : null}
+                  <StayImage uri={photo} color={stay.color} style={StyleSheet.absoluteFill} />
                 </View>
               </Pressable>
             ))}

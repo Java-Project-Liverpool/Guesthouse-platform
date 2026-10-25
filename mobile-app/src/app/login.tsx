@@ -1,5 +1,6 @@
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
+import { Ionicons } from '@expo/vector-icons';
 import {
   ActivityIndicator,
   Image,
@@ -34,11 +35,13 @@ const tabs = [
 
 export default function LoginScreen() {
   const router = useRouter();
-  const { user } = useAuth();
+  const { user, restoring } = useAuth();
   const [mode, setMode] = useState<'login' | 'signup'>('login');
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [passwordVisible, setPasswordVisible] = useState(false);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
 
@@ -51,18 +54,23 @@ export default function LoginScreen() {
 
   // Checks the form, then logs in or registers through the backend
   const submit = async () => {
+    if (busy) return;
     setError('');
 
-    if (!email.trim() || !password) {
-      setError('Enter your email and password.');
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
+      setError('Enter a valid email address.');
       return;
     }
     if (!isLogin && !name.trim()) {
       setError('Enter your full name.');
       return;
     }
-    if (!isLogin && password.length < 8) {
+    if (password.length < 8) {
       setError('Password must be at least 8 characters.');
+      return;
+    }
+    if (!isLogin && password !== confirmPassword) {
+      setError('The passwords do not match.');
       return;
     }
 
@@ -74,6 +82,7 @@ export default function LoginScreen() {
         await register(name.trim(), email.trim(), password);
       }
       setPassword('');
+      setConfirmPassword('');
       router.replace('/');
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Something went wrong.');
@@ -81,6 +90,8 @@ export default function LoginScreen() {
       setBusy(false);
     }
   };
+
+  if (restoring) return <SafeAreaView style={styles.screen}><ActivityIndicator size="large" color={colors.dark} /></SafeAreaView>;
 
   // Already signed in: show who, with a way to log out
   if (user) {
@@ -163,15 +174,25 @@ export default function LoginScreen() {
         />
 
         <Text style={styles.label}>Password</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="At least 8 characters"
-          placeholderTextColor={colors.placeholder}
-          secureTextEntry
-          value={password}
-          onChangeText={setPassword}
-          onSubmitEditing={submit}
-        />
+        <View style={styles.passwordRow}>
+          <TextInput
+            style={[styles.input, styles.passwordInput]}
+            placeholder="At least 8 characters"
+            placeholderTextColor={colors.placeholder}
+            secureTextEntry={!passwordVisible}
+            autoCapitalize="none"
+            value={password}
+            onChangeText={setPassword}
+            onSubmitEditing={submit}
+          />
+          <Pressable style={styles.eyeButton} onPress={() => setPasswordVisible((visible) => !visible)} accessibilityRole="button" accessibilityLabel={passwordVisible ? 'Hide password' : 'Show password'}>
+            <Ionicons name={passwordVisible ? 'eye-off-outline' : 'eye-outline'} size={21} color={colors.muted} />
+          </Pressable>
+        </View>
+        {!isLogin && <>
+          <Text style={styles.label}>Confirm password</Text>
+          <TextInput style={styles.input} placeholder="Re-enter your password" placeholderTextColor={colors.placeholder} secureTextEntry={!passwordVisible} value={confirmPassword} onChangeText={setConfirmPassword} onSubmitEditing={submit} />
+        </>}
         {isLogin && (
           <Pressable onPress={() => router.push('/forgot-password')}>
             <Text style={[styles.note, { marginBottom: 22 }]}>Forgot password?</Text>
@@ -268,6 +289,9 @@ const styles = StyleSheet.create({
     color: colors.text,
     marginBottom: 22,
   },
+  passwordRow: { position: 'relative' },
+  passwordInput: { paddingRight: 54 },
+  eyeButton: { position: 'absolute', right: 14, top: 0, height: 54, width: 36, alignItems: 'center', justifyContent: 'center' },
   error: { fontSize: 14, color: colors.error, marginTop: -8, marginBottom: 16 },
 
   // Buttons

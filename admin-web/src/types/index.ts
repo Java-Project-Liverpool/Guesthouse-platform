@@ -3,6 +3,8 @@ export type AuthProvider = 'local' | 'google';
 
 export interface User {
   _id: string;
+  /** Present on the auth endpoints, which return the id instead of the document. */
+  id?: string;
   name: string;
   email: string;
   role: UserRole;
@@ -64,16 +66,32 @@ export interface Report {
   resolvedBy?: User | string;
 }
 
+export interface RecentActivityItem {
+  id: string;
+  type: 'guesthouse_added' | 'review_submitted';
+  title: string;
+  subtitle: string;
+  timestamp: string;
+}
+
 export interface DashboardStats {
   totalGuesthouses: number;
-  topCity: string;
+  totalAllGuesthouses: number;
+  topCity: string | null;
   topRatedStay: {
     name: string;
     rating: number;
+    city?: string;
   } | null;
-  avgPrice: number;
+  avgPrice: number | null;
   cityCounts: { city: string; count: number }[];
   recentlyAdded: Guesthouse[];
+  totalCustomers: number;
+  totalAdmins: number;
+  totalRatings: number;
+  overallAvgRating: number | null;
+  ratingBreakdown: Record<number, number>;
+  recentActivity: RecentActivityItem[];
 }
 
 export type ThemeMode = 'light' | 'dark' | 'system';

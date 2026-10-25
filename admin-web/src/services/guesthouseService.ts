@@ -1,5 +1,5 @@
 import { apiFetch } from './api';
-import type { Guesthouse } from '../types';
+import type { DashboardStats, Guesthouse, Rating } from '../types';
 
 export interface SearchGuesthouseParams {
   name?: string;
@@ -83,4 +83,25 @@ export async function setGuesthouseVisibility(
       body: JSON.stringify({ isActive: true }),
     });
   }
+}
+
+export async function getDashboardStats(): Promise<DashboardStats> {
+  return apiFetch<DashboardStats>('/admin/stats');
+}
+
+export async function getGuesthouseRatings(id: string): Promise<{ ratings: Rating[] }> {
+  return apiFetch<{ ratings: Rating[] }>(`/guesthouses/${id}/ratings`);
+}
+
+export async function uploadGuesthouseImage(
+  file: File,
+  type: 'logo' | 'gallery'
+): Promise<{ url: string; publicId: string }> {
+  const formData = new FormData();
+  formData.append('image', file);
+
+  return apiFetch<{ url: string; publicId: string }>(`/uploads/image?type=${type}`, {
+    method: 'POST',
+    body: formData,
+  });
 }

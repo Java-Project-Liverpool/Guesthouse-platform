@@ -1,237 +1,68 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Redirect, useLocalSearchParams, useRouter } from 'expo-router';
-import { useState } from 'react';
-import { Image, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { useEffect, useState } from 'react';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { useAuth } from '@/data/auth';
-import { useStays } from '@/data/stays';
+import StayImage from '@/components/stay-image';
+import { ApiError } from '@/data/api';
+import { logout, useAuth } from '@/data/auth';
+import { getStay, submitStayReview, type Stay } from '@/data/stays';
 
-const colors = {
-  background: '#F7F5F0',
-  card: '#FFFFFF',
-  dark: '#14352A',
-  text: '#15201A',
-  muted: '#5F6B64',
-  border: '#E1E5E0',
-  inputBorder: '#C8CEC8',
-  chip: '#EEF1EC',
-  star: '#B7650A',
-  danger: '#B3261E',
-};
+const colors = { background: '#F7F5F0', card: '#FFFFFF', dark: '#14352A', text: '#15201A', muted: '#5F6B64', border: '#E1E5E0', star: '#B7650A', danger: '#B3261E' };
 
 export default function WriteReviewScreen() {
   const router = useRouter();
-  const { user } = useAuth();
-  const { id, rating: startRating } = useLocalSearchParams<{ id?: string; rating?: string }>();
-  const { stays } = useStays();
-  const [rating, setRating] = useState(Number(startRating) || 0);
+  const { user, token, restoring } = useAuth();
+  const { id } = useLocalSearchParams<{ id?: string }>();
+  const [stay, setStay] = useState<Stay | null>(null);
+  const [rating, setRating] = useState(0);
   const [comment, setComment] = useState('');
   const [error, setError] = useState('');
-  const [done, setDone] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [busy, setBusy] = useState(false);
 
-  // Only logged-in customers can review
-  if (!user) return <Redirect href="/login" />;
+  useEffect(() => {
+    let active = true;
+    if (id) getStay(id).then((item) => { if (active) setStay(item); }).catch((reason: unknown) => { if (active) setError(reason instanceof Error ? reason.message : 'Could not load this guesthouse.'); }).finally(() => { if (active) setLoading(false); });
+    else return () => { active = false; };
+    return () => { active = false; };
+  }, [id]);
 
-  const stay = stays.find((item) => item.id === id) ?? stays[0];
-  if (!stay) return null;
+  if (restoring) return <SafeAreaView style={styles.center}><ActivityIndicator size="large" color={colors.dark} /></SafeAreaView>;
+  if (!user || !token) return <Redirect href="/login" />;
+  if (user.role !== 'customer') return <SafeAreaView style={styles.center}><Text style={styles.title}>Customer reviews only</Text><Text style={styles.note}>Sign in with a customer account to leave a review.</Text></SafeAreaView>;
 
-  const submit = () => {
-    if (rating === 0) return setError('Tap a star to choose your rating.');
-    setError('');
-    // Placeholder: send { rating, comment } to the backend once the ratings route exists
-    setDone(true);
+  const submit = async () => {
+    if (busy) return;
+    if (rating < 1 || rating > 5) { setError('Choose a rating from 1 to 5 stars.'); return; }
+    if (!id) { setError('This review is missing its guesthouse.'); return; }
+    setBusy(true); setError('');
+    try {
+      await submitStayReview(id, token, rating, comment.trim());
+      router.replace({ pathname: '/details', params: { id } });
+    } catch (reason) {
+      if (reason instanceof ApiError && reason.status === 401) await logout();
+      setError(reason instanceof Error ? reason.message : 'Your review could not be submitted.');
+    }
+    finally { setBusy(false); }
   };
 
-  // Thanks for rating
-  if (done) {
-    return (
-      <SafeAreaView style={styles.screen}>
-        <View style={styles.doneWrap}>
-          <View style={styles.doneIcon}>
-            <Ionicons name="checkmark" size={32} color={colors.dark} />
-          </View>
-          <Text style={styles.doneTitle}>Thanks for rating</Text>
-          <Text style={styles.doneText}>You rated {stay.name}</Text>
-          <Pressable style={styles.primaryButton} onPress={() => router.back()}>
-            <Text style={styles.primaryText}>Back to guesthouse</Text>
-          </Pressable>
-          <Pressable style={styles.outlineButton} onPress={() => router.replace('/')}>
-            <Text style={styles.outlineText}>Browse more</Text>
-          </Pressable>
-        </View>
-      </SafeAreaView>
-    );
-  }
-
-  return (
-    <SafeAreaView style={styles.screen}>
-      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-        <View style={styles.header}>
-          <Pressable style={styles.backButton} onPress={() => router.back()}>
-            <Ionicons name="chevron-back" size={22} color={colors.dark} />
-          </Pressable>
-          <Text style={styles.headerTitle}>Write a review</Text>
-          <View style={styles.backButtonSpace} />
-        </View>
-
-        <View style={styles.stayCard}>
-          <View style={[styles.thumb, { backgroundColor: stay.color }]}>
-            {stay.image ? (
-              <Image source={{ uri: stay.image }} style={styles.thumbImage} resizeMode="cover" />
-            ) : null}
-          </View>
-          <View style={styles.stayInfo}>
-            <Text style={styles.stayName}>{stay.name}</Text>
-            <Text style={styles.stayCity}>{stay.city}, Botswana</Text>
-          </View>
-        </View>
-
-        <Text style={styles.centerLabel}>Your rating</Text>
-        <View style={styles.stars}>
-          {[1, 2, 3, 4, 5].map((value) => (
-            <Pressable key={value} onPress={() => setRating(value)}>
-              <Ionicons
-                name={value <= rating ? 'star' : 'star-outline'}
-                size={40}
-                color={colors.star}
-              />
-            </Pressable>
-          ))}
-        </View>
-
-        <Text style={styles.label}>Your comment (optional)</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="Share your experience"
-          placeholderTextColor={colors.muted}
-          multiline
-          value={comment}
-          onChangeText={setComment}
-        />
-
-        {error !== '' && <Text style={styles.error}>{error}</Text>}
-
-        <Pressable style={styles.primaryButton} onPress={submit}>
-          <Text style={styles.primaryText}>Submit review</Text>
-        </Pressable>
-        <Text style={styles.note}>Only logged-in customers can review.</Text>
-      </ScrollView>
-    </SafeAreaView>
-  );
+  return <SafeAreaView style={styles.screen}><ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+    <View style={styles.header}><Pressable style={styles.back} onPress={() => router.back()}><Ionicons name="chevron-back" size={22} color={colors.dark} /></Pressable><Text style={styles.headerTitle}>Write a review</Text><View style={styles.back} /></View>
+    {!id ? <Text style={styles.error}>This review is missing its guesthouse.</Text> : loading ? <ActivityIndicator color={colors.dark} /> : stay ? <>
+      <View style={styles.stayCard}><StayImage uri={stay.image} color={stay.color} style={styles.thumb} /><View style={styles.stayInfo}><Text style={styles.stayName}>{stay.name}</Text><Text style={styles.note}>{[stay.city, stay.country].filter(Boolean).join(', ')}</Text></View></View>
+      <Text style={styles.centerLabel}>Your rating</Text><View style={styles.stars}>{[1, 2, 3, 4, 5].map((value) => <Pressable key={value} onPress={() => setRating(value)} accessibilityRole="button" accessibilityLabel={`${value} star${value === 1 ? '' : 's'}`}><Ionicons name={value <= rating ? 'star' : 'star-outline'} size={40} color={colors.star} /></Pressable>)}</View>
+      <Text style={styles.label}>Your comment (optional)</Text><TextInput style={styles.input} placeholder="Share your experience" placeholderTextColor={colors.muted} multiline maxLength={2000} value={comment} onChangeText={setComment} />
+      {error ? <Text style={styles.error}>{error}</Text> : null}
+      <Pressable style={[styles.primary, busy && styles.disabled]} onPress={() => void submit()} disabled={busy}>{busy ? <ActivityIndicator color="#FFFFFF" /> : <Text style={styles.primaryText}>Submit review</Text>}</Pressable>
+      <Text style={styles.note}>One review per guesthouse. Submitting again updates your existing review.</Text>
+    </> : <Text style={styles.error}>{error}</Text>}
+  </ScrollView></SafeAreaView>;
 }
 
-const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: colors.background },
-  content: {
-    width: '100%',
-    maxWidth: 480,
-    alignSelf: 'center',
-    paddingHorizontal: 20,
-    paddingTop: 16,
-    paddingBottom: 40,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 24,
-  },
-  backButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: colors.chip,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  backButtonSpace: { width: 44 },
-  headerTitle: { fontSize: 20, fontWeight: '800', color: colors.text },
-
-  stayCard: {
-    flexDirection: 'row',
-    gap: 14,
-    padding: 12,
-    marginBottom: 28,
-    backgroundColor: colors.card,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 20,
-  },
-  thumb: { width: 72, height: 72, borderRadius: 14, overflow: 'hidden' },
-  thumbImage: { ...StyleSheet.absoluteFill },
-  stayInfo: { flex: 1, justifyContent: 'center' },
-  stayName: { fontSize: 17, fontWeight: '800', color: colors.text },
-  stayCity: { fontSize: 14, color: colors.muted, marginTop: 2 },
-
-  centerLabel: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: colors.muted,
-    textAlign: 'center',
-    marginBottom: 12,
-  },
-  stars: { flexDirection: 'row', justifyContent: 'center', gap: 10, marginBottom: 28 },
-  label: { fontSize: 14, fontWeight: '700', color: colors.muted, marginBottom: 8 },
-  input: {
-    height: 110,
-    backgroundColor: colors.card,
-    borderWidth: 1,
-    borderColor: colors.inputBorder,
-    borderRadius: 14,
-    paddingHorizontal: 14,
-    paddingTop: 12,
-    fontSize: 15,
-    color: colors.text,
-    textAlignVertical: 'top',
-    marginBottom: 20,
-  },
-  error: { fontSize: 14, color: colors.danger, marginBottom: 14 },
-  primaryButton: {
-    height: 54,
-    backgroundColor: colors.dark,
-    borderRadius: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 14,
-  },
-  primaryText: { fontSize: 16, fontWeight: '700', color: '#FFFFFF' },
-  note: { fontSize: 14, color: colors.muted, textAlign: 'center' },
-
-  // Thanks for rating
-  doneWrap: {
-    flex: 1,
-    width: '100%',
-    maxWidth: 480,
-    alignSelf: 'center',
-    paddingHorizontal: 20,
-    justifyContent: 'center',
-  },
-  doneIcon: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
-    backgroundColor: colors.chip,
-    alignItems: 'center',
-    justifyContent: 'center',
-    alignSelf: 'center',
-    marginBottom: 20,
-  },
-  doneTitle: { fontSize: 26, fontWeight: '800', color: colors.text, textAlign: 'center' },
-  doneText: {
-    fontSize: 15,
-    color: colors.muted,
-    textAlign: 'center',
-    marginTop: 6,
-    marginBottom: 32,
-  },
-  outlineButton: {
-    height: 54,
-    borderWidth: 1,
-    borderColor: colors.dark,
-    borderRadius: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  outlineText: { fontSize: 16, fontWeight: '700', color: colors.dark },
+const styles = StyleSheet.create({ screen: { flex: 1, backgroundColor: colors.background }, content: { width: '100%', maxWidth: 480, alignSelf: 'center', paddingHorizontal: 20, paddingTop: 16, paddingBottom: 40 }, center: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24, backgroundColor: colors.background },
+  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }, back: { width: 44, height: 44, borderRadius: 22, backgroundColor: '#EEF1EC', alignItems: 'center', justifyContent: 'center' }, headerTitle: { fontSize: 20, fontWeight: '800', color: colors.text },
+  stayCard: { flexDirection: 'row', gap: 14, padding: 12, marginBottom: 28, backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border, borderRadius: 20 }, thumb: { width: 72, height: 72, borderRadius: 14 }, stayInfo: { flex: 1, justifyContent: 'center' }, stayName: { fontSize: 17, fontWeight: '800', color: colors.text }, title: { fontSize: 23, fontWeight: '800', color: colors.text },
+  note: { fontSize: 14, color: colors.muted, textAlign: 'center', lineHeight: 21, marginTop: 8 }, centerLabel: { fontSize: 14, fontWeight: '700', color: colors.muted, textAlign: 'center', marginBottom: 12 }, stars: { flexDirection: 'row', justifyContent: 'center', gap: 10, marginBottom: 28 }, label: { fontSize: 14, fontWeight: '700', color: colors.muted, marginBottom: 8 }, input: { height: 110, backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border, borderRadius: 14, paddingHorizontal: 14, paddingTop: 12, fontSize: 15, color: colors.text, textAlignVertical: 'top', marginBottom: 20 }, error: { fontSize: 14, color: colors.danger, marginBottom: 14 }, primary: { height: 54, backgroundColor: colors.dark, borderRadius: 14, alignItems: 'center', justifyContent: 'center', marginBottom: 14 }, primaryText: { fontSize: 16, fontWeight: '700', color: '#FFFFFF' }, disabled: { opacity: 0.7 },
 });
