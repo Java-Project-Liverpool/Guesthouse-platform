@@ -68,5 +68,12 @@ export const Spacing = {
   six: 64,
 } as const;
 
+export const Typography = {
+  cardTitle: { fontSize: 16, fontWeight: '600', lineHeight: 22 },
+  supporting: { fontSize: 13, fontWeight: '400', lineHeight: 18 },
+  metadata: { fontSize: 11, fontWeight: '400', lineHeight: 14 },
+  cardTitleLarge: { fontSize: 18, fontWeight: '700', lineHeight: 24 },
+} as const;
+
 export const BottomTabInset = Platform.select({ ios: 50, android: 80 }) ?? 0;
 export const MaxContentWidth = 800;
