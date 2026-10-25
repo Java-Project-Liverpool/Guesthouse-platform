@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "Dumela Stays",
-    "slug": "mobile-app",
+    "slug": "dumela-stays",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/logo.png",
@@ -43,9 +43,9 @@
     "extra": {
       "router": {},
       "eas": {
-        "projectId": "5058e59b-a025-435b-bf8a-dbdad3adaee8"
+        "projectId": "51043a97-2c4c-4155-91b0-c7a5d575a3fb"
       }
     },
-    "owner": "benson_02"
+    "owner": "dumela-stays-team"
   }
 }

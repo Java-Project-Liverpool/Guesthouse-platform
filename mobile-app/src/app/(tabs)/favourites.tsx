@@ -2,45 +2,106 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import StayImage from '@/components/stay-image';
+import GuesthouseCard from '@/components/guesthouse-card';
+import { Colors, Radii, Typography } from '@/constants/theme';
 import { useAuth } from '@/data/auth';
 import { useFavourites } from '@/data/favourites';
 
-const colors = { background: '#F7F5F0', card: '#FFFFFF', dark: '#14352A', text: '#15201A', muted: '#5F6B64', border: '#E1E5E0', star: '#B7650A' };
-
 export default function FavouritesScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const { user, restoring } = useAuth();
   const { saved, favourites, loading, error, retry, toggleSaved } = useFavourites();
   const [actionError, setActionError] = useState('');
+
   const compare = () => {
-    if (saved.length < 2) return setActionError('Save at least two stays to compare them.');
+    if (saved.length < 2) {
+      setActionError('Save at least two stays to compare them.');
+      return;
+    }
     router.push({ pathname: '/compare', params: { a: saved[0], b: saved[1] } });
   };
 
+  const removeFavourite = async (id: string) => {
+    try {
+      await toggleSaved(id);
+      setActionError('');
+    } catch (reason) {
+      setActionError(reason instanceof Error ? reason.message : 'Could not remove this favourite.');
+    }
+  };
+
   return (
-    <SafeAreaView style={styles.screen}>
-      <ScrollView contentContainerStyle={styles.content}>
-        <View style={styles.header}>
-          <View><Text style={styles.subtitle}>Saved by you</Text><Text style={styles.title}>Favourites</Text></View>
-          {favourites.length > 1 && <Pressable style={styles.compareButton} onPress={compare}><Ionicons name="git-compare-outline" size={18} color={colors.dark} /><Text style={styles.compareText}>Compare</Text></Pressable>}
-        </View>
-        {restoring ? <ActivityIndicator style={{ marginTop: 36 }} color={colors.dark} size="large" /> : null}
-        {!restoring && !user ? <View style={styles.empty}><Ionicons name="heart-outline" size={38} color={colors.dark} /><Text style={styles.emptyTitle}>Your saved stays live here</Text><Text style={styles.emptyText}>Sign in to keep a list of guesthouses you love.</Text><Pressable style={styles.primary} onPress={() => router.push('/login')}><Text style={styles.primaryText}>Log in or sign up</Text></Pressable></View> : null}
-        {user && loading ? <ActivityIndicator style={{ marginTop: 36 }} color={colors.dark} size="large" /> : null}
-        {user && error ? <View style={styles.empty}><Text style={styles.emptyTitle}>Favourites could not load</Text><Text style={styles.emptyText}>{error}</Text><Pressable style={styles.primary} onPress={retry}><Text style={styles.primaryText}>Try again</Text></Pressable></View> : null}
-        {user && !loading && !error && favourites.length === 0 ? <View style={styles.empty}><Ionicons name="heart-outline" size={38} color={colors.dark} /><Text style={styles.emptyTitle}>No favourites yet</Text><Text style={styles.emptyText}>Tap a heart on any guesthouse to save it here.</Text><Pressable style={styles.primary} onPress={() => router.push('/')}><Text style={styles.primaryText}>Explore stays</Text></Pressable></View> : null}
-        {user && !error && favourites.map((stay) => <View key={stay.id} style={styles.card}>
-          <Pressable style={styles.cardOpen} onPress={() => router.push({ pathname: '/details', params: { id: stay.id } })} accessibilityRole="button" accessibilityLabel={`Open ${stay.name}`}>
-            <StayImage uri={stay.image} color={stay.color} style={styles.thumb} />
-            <View style={styles.info}><Text style={styles.name}>{stay.name}</Text><Text style={styles.city}>{[stay.city, stay.country].filter(Boolean).join(', ')}</Text>
-              <View style={styles.priceRow}>{stay.price !== undefined && <Text style={styles.price}>P{stay.price.toLocaleString('en-US')} / night</Text>}{stay.rating !== undefined && <Text style={styles.rating}>★ {stay.rating.toFixed(1)}</Text>}</View>
-            </View>
+    <SafeAreaView edges={['top', 'left', 'right']} style={styles.screen}>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + 28 }]}>
+        <View style={styles.topBar}>
+          <Pressable onPress={() => router.back()} accessibilityRole="button" accessibilityLabel="Go back" style={styles.backButton}>
+            <Ionicons name="chevron-back" size={21} color={Colors.light.primary} />
           </Pressable>
-          <Pressable style={styles.remove} onPress={() => void toggleSaved(stay.id).catch((reason: unknown) => setActionError(reason instanceof Error ? reason.message : 'Could not remove this favourite.'))} accessibilityRole="button" accessibilityLabel={`Remove ${stay.name} from favourites`}><Ionicons name="heart" size={21} color="#B33B37" /></Pressable>
-        </View>)}
+          <Text style={styles.eyebrow}>YOUR COLLECTION</Text>
+          <View style={styles.topBarSpacer} />
+        </View>
+
+        <View style={styles.header}>
+          <View style={styles.headerCopy}>
+            <Text style={styles.title}>Favourites</Text>
+            <Text style={styles.subtitle}>The guesthouses you want to remember.</Text>
+          </View>
+          {favourites.length > 1 ? (
+            <Pressable onPress={compare} accessibilityRole="button" style={styles.compareButton}>
+              <Ionicons name="git-compare-outline" size={17} color={Colors.light.primary} />
+              <Text style={styles.compareText}>Compare</Text>
+            </Pressable>
+          ) : null}
+        </View>
+
+        {restoring || (user && loading) ? <ActivityIndicator style={styles.loader} size="large" color={Colors.light.primary} /> : null}
+
+        {!restoring && !user ? (
+          <View style={styles.stateCard}>
+            <View style={styles.emptyIcon}><Ionicons name="heart-outline" size={24} color={Colors.light.primary} /></View>
+            <Text style={styles.stateTitle}>Save places for later</Text>
+            <Text style={styles.stateBody}>Sign in to keep your favourite guesthouses together.</Text>
+            <Pressable style={styles.primaryButton} onPress={() => router.push('/login')} accessibilityRole="button">
+              <Text style={styles.primaryButtonText}>Log in or sign up</Text>
+            </Pressable>
+          </View>
+        ) : null}
+
+        {user && error ? (
+          <View style={styles.stateCard}>
+            <Text style={styles.stateTitle}>Favourites could not load</Text>
+            <Text style={styles.stateBody}>{error}</Text>
+            <Pressable style={styles.primaryButton} onPress={retry} accessibilityRole="button">
+              <Text style={styles.primaryButtonText}>Try again</Text>
+            </Pressable>
+          </View>
+        ) : null}
+
+        {user && !loading && !error && favourites.length === 0 ? (
+          <View style={styles.stateCard}>
+            <View style={styles.emptyIcon}><Ionicons name="heart-outline" size={24} color={Colors.light.primary} /></View>
+            <Text style={styles.stateTitle}>Your list is ready</Text>
+            <Text style={styles.stateBody}>Tap the heart on a guesthouse to save it here.</Text>
+            <Pressable style={styles.primaryButton} onPress={() => router.push('/explore')} accessibilityRole="button">
+              <Text style={styles.primaryButtonText}>Explore stays</Text>
+            </Pressable>
+          </View>
+        ) : null}
+
+        {user && !loading ? favourites.map((stay) => (
+          <GuesthouseCard
+            key={stay.id}
+            stay={stay}
+            saved
+            onPress={() => router.push({ pathname: '/details', params: { id: stay.id } })}
+            onToggleSaved={() => void removeFavourite(stay.id)}
+          />
+        )) : null}
         {actionError ? <Text style={styles.error}>{actionError}</Text> : null}
       </ScrollView>
     </SafeAreaView>
@@ -48,11 +109,24 @@ export default function FavouritesScreen() {
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: colors.background }, content: { paddingHorizontal: 20, paddingTop: 16, paddingBottom: 40 },
-  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }, subtitle: { color: colors.muted, fontSize: 14 }, title: { fontSize: 30, fontWeight: '800', color: colors.text },
-  compareButton: { flexDirection: 'row', alignItems: 'center', gap: 6, padding: 12, backgroundColor: '#EEF1EC', borderRadius: 14 }, compareText: { color: colors.dark, fontWeight: '800' },
-  empty: { alignItems: 'center', paddingHorizontal: 18, paddingVertical: 46, gap: 9 }, emptyTitle: { fontSize: 19, fontWeight: '800', color: colors.text, textAlign: 'center' }, emptyText: { color: colors.muted, lineHeight: 22, textAlign: 'center' },
-  primary: { backgroundColor: colors.dark, borderRadius: 14, paddingVertical: 13, paddingHorizontal: 20, marginTop: 8 }, primaryText: { color: '#FFFFFF', fontWeight: '800' },
-  card: { backgroundColor: colors.card, borderRadius: 19, padding: 12, marginBottom: 14, position: 'relative' }, cardOpen: { flexDirection: 'row', gap: 13, paddingRight: 38 }, thumb: { width: 92, height: 98, borderRadius: 13 }, info: { flex: 1, justifyContent: 'center', gap: 5 }, name: { color: colors.text, fontWeight: '800', fontSize: 16 }, city: { color: colors.muted }, priceRow: { flexDirection: 'row', justifyContent: 'space-between', flexWrap: 'wrap', gap: 5 }, price: { color: colors.text, fontWeight: '700' }, rating: { color: colors.star, fontWeight: '800' },
-  remove: { position: 'absolute', top: 18, right: 17, padding: 4 }, error: { color: '#A33B32', marginTop: 12 },
+  screen: { flex: 1, backgroundColor: Colors.light.background },
+  content: { width: '100%', maxWidth: 560, alignSelf: 'center', paddingHorizontal: 18, paddingTop: 8 },
+  topBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  backButton: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center', backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: Colors.light.border },
+  eyebrow: { ...Typography.metadata, letterSpacing: 1.3, color: Colors.light.textSecondary },
+  topBarSpacer: { width: 40 },
+  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginTop: 17, marginBottom: 22 },
+  headerCopy: { flex: 1 },
+  title: { ...Typography.screenTitle, color: Colors.light.text },
+  subtitle: { ...Typography.supporting, color: Colors.light.textSecondary, marginTop: 4 },
+  compareButton: { minHeight: 40, flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 11, borderRadius: Radii.pill, backgroundColor: '#E6ECE5' },
+  compareText: { ...Typography.metadata, fontWeight: '600', color: Colors.light.primary },
+  loader: { marginTop: 40 },
+  stateCard: { alignItems: 'center', paddingHorizontal: 20, paddingVertical: 36, borderRadius: 20, backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: Colors.light.border },
+  emptyIcon: { width: 48, height: 48, borderRadius: 16, alignItems: 'center', justifyContent: 'center', backgroundColor: '#E8EFE8', marginBottom: 12 },
+  stateTitle: { ...Typography.cardTitle, textAlign: 'center', color: Colors.light.text },
+  stateBody: { ...Typography.supporting, textAlign: 'center', color: Colors.light.textSecondary, marginTop: 7 },
+  primaryButton: { minHeight: 46, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 18, marginTop: 17, borderRadius: Radii.pill, backgroundColor: Colors.light.primary },
+  primaryButtonText: { ...Typography.supporting, fontWeight: '600', color: '#FFFFFF' },
+  error: { ...Typography.supporting, color: '#A13E37', marginTop: 8 },
 });
