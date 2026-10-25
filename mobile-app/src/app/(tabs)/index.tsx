@@ -1,24 +1,16 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import {
-  ActivityIndicator,
-  Image,
-  Platform,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
+  ActivityIndicator, Image, Pressable, ScrollView, StyleSheet, Text, TextInput, View
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import LoginPrompt from '@/components/login-prompt';
 import StayImage from '@/components/stay-image';
+import { Colors, Radii, Typography } from '@/constants/theme';
 import { useAuth } from '@/data/auth';
 import { useStays } from '@/data/stays';
-import { useFavourites } from '@/data/favourites';
 
 const colors = {
   background: '#F7F5F0',
@@ -32,422 +24,158 @@ const colors = {
   heart: '#C0392B',
 };
 
-const sortOptions = [
-  { key: 'cheapest', label: 'Cheapest first' },
-  { key: 'rated', label: 'Top rated' },
-] as const;
-
-function formatPrice(price: number) {
-  return 'P' + price.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
-}
-
-// Photo area keeps only listing information; the save control sits beside the card press target.
-function StayPhoto({
-  color,
-  image,
-  height,
-  price,
-}: {
-  color: string;
-  image?: string;
-  height: number;
-  price?: number;
-}) {
-  return (
-    <View style={[styles.photo, { backgroundColor: color, height }]}>
-      <StayImage uri={image} color={color} style={StyleSheet.absoluteFill} />
-      {price !== undefined && (
-        <View style={styles.pricePill}>
-          <Text style={styles.pricePillText}>{formatPrice(price)} / night</Text>
-        </View>
-      )}
-    </View>
-  );
-}
-
-function Rating({ value }: { value: number }) {
-  return (
-    <View style={styles.rating}>
-      <Ionicons name="star" size={16} color={colors.star} />
-      <Text style={styles.ratingText}>{value.toFixed(1)}</Text>
-    </View>
-  );
-}
-
-function StaySkeleton({ width = 294, height = 203 }: { width?: number | 'full'; height?: number }) {
-  return (
-    <View style={[styles.skeletonCard, { width: width === 'full' ? '100%' : width }]} accessibilityLabel="Loading guesthouse">
-      <View style={[styles.skeletonPhoto, { height }]} />
-      <View style={styles.skeletonLine} />
-      <View style={[styles.skeletonLine, styles.skeletonShort]} />
-    </View>
-  );
-}
-
 export default function HomeScreen() {
   const router = useRouter();
-  const { stays, loading, error, retry } = useStays();
-  const [city, setCity] = useState('All');
-  const [sort, setSort] = useState<'cheapest' | 'rated'>('cheapest');
-  const [query, setQuery] = useState('');
-  const { saved, toggleSaved } = useFavourites();
+  const insets = useSafeAreaInsets();
   const { user } = useAuth();
-  const [promptOpen, setPromptOpen] = useState(false);
+  const { stays, loading, error, retry } = useStays();
+  const [searchQuery, setSearchQuery] = useState('');
 
-  // Guests get the "Log in to save this stay" sheet instead of saving
-  const save = (id: string, listing?: (typeof stays)[number]) => {
-    if (!user) return setPromptOpen(true);
-    void toggleSaved(id, listing).catch((reason: unknown) => {
-      setPromptOpen(false);
-      setSaveError(reason instanceof Error ? reason.message : 'Could not update favourites.');
-    });
-  };
-
-  const openStay = (id: string) => router.push({ pathname: '/details', params: { id } });
-
-  const [saveError, setSaveError] = useState('');
-  const cities = useMemo(() => ['All', ...Array.from(new Set(stays.map((stay) => stay.city).filter(Boolean)))], [stays]);
-  const verifiedStays = stays.filter((stay) => stay.verified);
-  const featured = (verifiedStays.length > 0 ? verifiedStays : stays).slice(0, 4);
-
-  const shown = stays
-    .filter((stay) => city === 'All' || stay.city === city)
-    .filter((stay) => (stay.name + ' ' + stay.city).toLowerCase().includes(query.toLowerCase()))
-    .sort((a, b) => {
-      if (sort === 'cheapest') return (a.price ?? Number.POSITIVE_INFINITY) - (b.price ?? Number.POSITIVE_INFINITY);
-      return (b.rating ?? Number.NEGATIVE_INFINITY) - (a.rating ?? Number.NEGATIVE_INFINITY);
-    });
+  const featured = stays.slice(0, 4);
 
   return (
-    <SafeAreaView style={styles.screen}>
-      <ScrollView contentContainerStyle={styles.content}>
-        {/* Header */}
-        <View style={[styles.header, styles.padded]}>
-          <View style={styles.row}>
-            <View style={styles.logoTile}>
-              <Image source={require('@/assets/images/logo.png')} style={styles.logo} />
-            </View>
-            <View>
-              <Text style={styles.greeting}>Dumela</Text>
-              <Text style={styles.greetingBold}>{user ? `Welcome back, ${user.name.split(' ')[0]}` : 'Find your next stay'}</Text>
-            </View>
+    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
+      <ScrollView contentContainerStyle={{ paddingBottom: insets.bottom + 24 }}>
+        {/* Branding header */}
+        <View style={styles.header}>
+          <View>
+            <Text style={styles.brand}>Dumela Stays</Text>
+            <Text style={styles.tagline}>Find your next stay.</Text>
           </View>
-          <Pressable style={styles.profileButton} onPress={() => router.push('/account')}>
+          <Pressable onPress={() => router.push('/account')} style={styles.profileBtn}>
             <Ionicons name="person-outline" size={22} color={colors.dark} />
           </Pressable>
         </View>
 
-        <Text style={[styles.title, styles.padded]}>Where to next?</Text>
-
-        {/* Search */}
-        <View style={[styles.searchRow, styles.padded]}>
-          <View style={styles.searchBox}>
-            <Ionicons name="search-outline" size={22} color={colors.muted} />
-            <TextInput
-              style={styles.searchInput}
-              placeholder="Search by name or location"
-              placeholderTextColor={colors.muted}
-              value={query}
-              onChangeText={setQuery}
-              onFocus={() => router.push('/search')}
-            />
+        {/* Hero */}
+        <View style={styles.hero}>
+          <Image source={{ uri: 'https://images.unsplash.com/photo-1551882547-ff40c63fe5fa?auto=format&fit=crop&w=800&q=80' }} style={styles.heroImage} />
+          <View style={styles.heroOverlay}>
+            <Text style={styles.heroTitle}>Where your next journey begins</Text>
+            <Text style={styles.heroSub}>Discover welcoming guesthouses across Botswana, from riverside retreats to city stays.</Text>
+            <Pressable onPress={() => router.push('/explore')} style={styles.ctaButton}>
+              <Text style={styles.ctaText}>Explore stays</Text>
+            </Pressable>
           </View>
-          <Pressable
-            style={styles.filterButton}
-            accessibilityRole="button"
-            accessibilityLabel="Open search filters"
-            onPress={() => router.push({ pathname: '/search', params: { filter: '1' } })}>
-            <Ionicons name="filter-outline" size={22} color="#FFFFFF" />
-          </Pressable>
         </View>
 
-        {/* City chips */}
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          style={styles.chipsScroll}
-          contentContainerStyle={styles.chips}>
-          {cities.map((name) => (
-            <Pressable
-              key={name}
-              style={[styles.chip, city === name && styles.chipActive]}
-              onPress={() => setCity(name)}>
-              <Text style={[styles.chipText, city === name && styles.chipTextActive]}>{name}</Text>
-            </Pressable>
-          ))}
-        </ScrollView>
+        {/* Search shortcut */}
+        <View style={styles.searchCard}>
+          <Ionicons name="search-outline" size={20} color={colors.muted} />
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Search guesthouses, cities..."
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+            onSubmitEditing={() => { if (searchQuery.trim()) router.push({ pathname: '/explore', params: { q: searchQuery.trim() } }); }}
+            returnKeyType="search"
+          />
+        </View>
 
-        {loading && <View style={styles.loadingNotice}><ActivityIndicator color={colors.dark} /><Text style={styles.cardSubtitle}>Finding stays from our guesthouse partners…</Text></View>}
-        {error && !loading && (
-          <View style={[styles.empty, styles.padded]}>
-            <Text style={styles.emptyTitle}>We couldn’t load stays</Text>
-            <Text style={styles.cardSubtitle}>{error} The first request after a quiet period can take a little longer.</Text>
-            <Pressable onPress={retry} accessibilityRole="button" style={styles.retryButton}><Text style={styles.retryText}>Try again</Text></Pressable>
+        {/* Services */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>What Dumela offers</Text>
+          <View style={styles.featuresGrid}>
+            {[
+              { icon: 'compass-outline', label: 'Discover local stays', desc: 'Explore guesthouses in cities across Botswana.' },
+              { icon: 'location-outline', label: 'Find the right location', desc: 'Discover accommodation by city or destination.' },
+              { icon: 'list-outline', label: 'Compare options', desc: 'Review prices, ratings, and listing details.' },
+              { icon: 'heart-outline', label: 'Save favourites', desc: 'Keep interesting stays in one place.' },
+            ].map((f) => (
+              <View key={f.label} style={styles.featureCard}>
+                <Ionicons name={f.icon as any} size={24} color={colors.dark} />
+                <Text style={styles.featureTitle}>{f.label}</Text>
+                <Text style={styles.featureDesc}>{f.desc}</Text>
+              </View>
+            ))}
           </View>
-        )}
+        </View>
 
         {/* Featured stays */}
-        <View style={[styles.sectionHeader, styles.padded]}>
-          <Text style={styles.sectionTitle}>Featured stays</Text>
-          <Pressable onPress={() => router.push('/search')}><Text style={styles.seeAll}>See all</Text></Pressable>
-        </View>
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.featuredList}>
-          {loading && <><StaySkeleton /><StaySkeleton /></>}
-          {featured.map((stay) => (
-            <View key={stay.id} style={styles.featuredCard}>
-              <Pressable onPress={() => openStay(stay.id)} accessibilityRole="button" accessibilityLabel={`View ${stay.name}`}>
-              <StayPhoto
-                color={stay.color}
-                image={stay.image}
-                height={203}
-                price={stay.price}
-              />
-              </Pressable>
-              <Pressable style={styles.heartButton} onPress={() => save(stay.id, stay)} accessibilityRole="button" accessibilityLabel={`${saved.includes(stay.id) ? 'Remove' : 'Add'} ${stay.name} ${saved.includes(stay.id) ? 'from' : 'to'} favourites`}>
-                <Ionicons name={saved.includes(stay.id) ? 'heart' : 'heart-outline'} size={22} color={saved.includes(stay.id) ? colors.heart : colors.dark} />
-              </Pressable>
-              <Pressable onPress={() => openStay(stay.id)}>
-              <View style={styles.cardTitleRow}>
-                <Text style={styles.cardTitle} numberOfLines={1}>
-                  {stay.name}
-                </Text>
-                {stay.rating !== undefined && <Rating value={stay.rating} />}
-              </View>
-              <Text style={styles.cardSubtitle}>{[stay.city, stay.country].filter(Boolean).join(', ')}</Text>
-              </Pressable>
-            </View>
-          ))}
-        </ScrollView>
-
-        {/* Sort switch */}
-        <View style={[styles.sortTrack, styles.padded]}>
-          {sortOptions.map((option) => (
-            <Pressable
-              key={option.key}
-              style={[styles.sortOption, sort === option.key && styles.sortOptionActive]}
-              onPress={() => setSort(option.key)}>
-              <Text style={[styles.sortText, sort === option.key && styles.sortTextActive]}>
-                {option.label}
-              </Text>
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Featured stays</Text>
+            <Pressable onPress={() => router.push('/explore')}>
+              <Text style={styles.seeAll}>See all stays →</Text>
             </Pressable>
-          ))}
+          </View>
+          {loading ? (
+            <ActivityIndicator color={colors.dark} />
+          ) : error ? (
+            <View style={styles.emptyBox}>
+              <Text style={styles.emptyText}>Could not reach the server.</Text>
+              <Pressable onPress={retry} style={styles.retryBtn}><Text style={styles.retryText}>Retry</Text></Pressable>
+            </View>
+          ) : stays.length === 0 ? (
+            <View style={styles.emptyBox}>
+              <Text style={styles.emptyText}>No visible stays found right now.</Text>
+            </View>
+          ) : (
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.carousel}>
+              {featured.map((stay) => (
+                <Pressable key={stay._id} onPress={() => router.push(`/details?id=${stay._id}`)} style={styles.card}>
+                  <StayImage url={stay.photos?.[0]} style={styles.cardImage} />
+                  <View style={styles.cardBody}>
+                    <Text numberOfLines={1} style={styles.cardName}>{stay.name}</Text>
+                    <Text style={styles.cardLocation}>{stay.city}</Text>
+                    <Text style={styles.cardPrice}>${stay.pricePerNight || '--'} / night</Text>
+                  </View>
+                </Pressable>
+              ))}
+            </ScrollView>
+          )}
         </View>
 
-        {/* Results */}
-        <View style={styles.padded}>
-          {loading && <><StaySkeleton width="full" height={172} /><StaySkeleton width="full" height={172} /></>}
-          {!loading && !error && stays.length === 0 && (
-            <View style={styles.empty}>
-              <Text style={styles.emptyTitle}>A quieter kind of discovery</Text>
-              <Text style={styles.cardSubtitle}>There are no guesthouses listed yet. Check back soon.</Text>
-            </View>
-          )}
-          {!loading && !error && stays.length > 0 && shown.length === 0 && (
-            <View style={styles.empty}>
-              <Text style={styles.emptyTitle}>No guesthouses found</Text>
-              <Text style={styles.cardSubtitle}>Try another name or location.</Text>
-            </View>
-          )}
-          {shown.map((stay) => (
-            <View key={stay.id} style={styles.listCard}>
-              <Pressable onPress={() => openStay(stay.id)} accessibilityRole="button" accessibilityLabel={`View ${stay.name}`}>
-              <StayPhoto
-                color={stay.color}
-                image={stay.image}
-                height={172}
-              />
-              </Pressable>
-              <Pressable style={styles.heartButton} onPress={() => save(stay.id, stay)} accessibilityRole="button" accessibilityLabel={`${saved.includes(stay.id) ? 'Remove' : 'Add'} ${stay.name} ${saved.includes(stay.id) ? 'from' : 'to'} favourites`}>
-                <Ionicons name={saved.includes(stay.id) ? 'heart' : 'heart-outline'} size={22} color={saved.includes(stay.id) ? colors.heart : colors.dark} />
-              </Pressable>
-              <Pressable onPress={() => openStay(stay.id)}>
-              <View style={styles.cardTitleRow}>
-                <Text style={styles.cardTitle} numberOfLines={1}>
-                  {stay.name}
-                </Text>
-                {stay.rating !== undefined && <Rating value={stay.rating} />}
-              </View>
-              <View style={styles.cardTitleRow}>
-                <View style={styles.row}>
-                  <Ionicons name="location-outline" size={16} color={colors.muted} />
-                  <Text style={styles.cardSubtitle}>{[stay.city, stay.country].filter(Boolean).join(', ')}</Text>
-                </View>
-                {stay.price !== undefined && <Text style={styles.price}>{formatPrice(stay.price)} <Text style={styles.perNight}>/ night</Text></Text>}
-              </View>
-              </Pressable>
-            </View>
-          ))}
-        </View>
+        {/* Favourites promo */}
+        <Pressable onPress={() => router.push('/favourites')} style={styles.promo}>
+          <Ionicons name="heart-outline" size={28} color={colors.dark} />
+          <View style={{ flex: 1 }}>
+            <Text style={styles.promoTitle}>Save your favourites</Text>
+            <Text style={styles.promoDesc}>Keep interesting guesthouses in one convenient place.</Text>
+          </View>
+          <Ionicons name="chevron-forward" size={20} color={colors.muted} />
+        </Pressable>
 
-        {saveError !== '' && <Text style={[styles.cardSubtitle, styles.padded]}>{saveError}</Text>}
+        {!user && <LoginPrompt />}
       </ScrollView>
-
-      <LoginPrompt visible={promptOpen} onClose={() => setPromptOpen(false)} />
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: colors.background },
-  // On web the tab bar floats over the top, so leave room for it
-  content: { paddingTop: Platform.OS === 'web' ? 84 : 12, paddingBottom: 40 },
-  padded: { paddingHorizontal: 20 },
-  row: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  loader: { marginBottom: 16 },
-
-  // Header
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 20,
-  },
-  logoTile: {
-    width: 48,
-    height: 48,
-    borderRadius: 14,
-    backgroundColor: '#FBFCF9',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 6,
-  },
-  logo: { width: 38, height: 38 },
-  greeting: { fontSize: 14, color: colors.muted },
-  greetingBold: { fontSize: 16, fontWeight: '800', color: colors.text },
-  profileButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: colors.chip,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  title: { fontSize: 32, fontWeight: '800', color: colors.text, marginBottom: 18 },
-
-  // Search
-  searchRow: { flexDirection: 'row', gap: 10, marginBottom: 18 },
-  searchBox: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    height: 54,
-    backgroundColor: colors.card,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 16,
-    paddingHorizontal: 14,
-  },
-  searchInput: { flex: 1, fontSize: 16, color: colors.text },
-  filterButton: {
-    width: 54,
-    height: 54,
-    borderRadius: 16,
-    backgroundColor: colors.dark,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-
-  // City chips
-  chipsScroll: { flexGrow: 0, marginBottom: 24 },
-  chips: { paddingHorizontal: 20, gap: 10 },
-  chip: {
-    height: 40,
-    paddingHorizontal: 16,
-    borderRadius: 20,
-    backgroundColor: colors.chip,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  chipActive: { backgroundColor: colors.dark },
-  chipText: { fontSize: 14, fontWeight: '700', color: colors.text },
-  chipTextActive: { color: '#FFFFFF' },
-
-  // Featured
-  sectionHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 14,
-  },
-  sectionTitle: { fontSize: 20, fontWeight: '800', color: colors.text },
-  seeAll: { fontSize: 14, fontWeight: '700', color: colors.muted },
-  featuredList: { paddingHorizontal: 20, gap: 14, marginBottom: 24 },
-  featuredCard: { width: 294, position: 'relative' },
-
-  // Cards
-  photo: { borderRadius: 20, marginBottom: 12, overflow: 'hidden' },
-  photoImage: { ...StyleSheet.absoluteFill },
-  heartButton: {
-    position: 'absolute',
-    top: 12,
-    right: 12,
-    width: 45,
-    height: 45,
-    borderRadius: 23,
-    backgroundColor: '#FFFFFF',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  retryButton: { marginTop: 14, backgroundColor: colors.dark, paddingHorizontal: 20, paddingVertical: 12, borderRadius: 14 },
-  retryText: { color: '#FFFFFF', fontWeight: '800' },
-  pricePill: {
-    position: 'absolute',
-    left: 12,
-    bottom: 12,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 14,
-    paddingHorizontal: 12,
-    height: 28,
-    justifyContent: 'center',
-  },
-  pricePillText: { fontSize: 13, fontWeight: '700', color: colors.text },
-  cardTitleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 8,
-    marginBottom: 2,
-  },
-  cardTitle: { flex: 1, fontSize: 18, fontWeight: '800', color: colors.text },
-  cardSubtitle: { fontSize: 15, color: colors.muted },
-  rating: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  ratingText: { fontSize: 15, fontWeight: '800', color: colors.star },
-  price: { fontSize: 18, fontWeight: '800', color: colors.text },
-  perNight: { fontSize: 15, fontWeight: '400', color: colors.muted },
-
-  // Sort switch
-  sortTrack: {
-    flexDirection: 'row',
-    height: 52,
-    marginHorizontal: 20,
-    paddingHorizontal: 4,
-    alignItems: 'center',
-    backgroundColor: colors.chip,
-    borderRadius: 16,
-    marginBottom: 18,
-  },
-  sortOption: {
-    flex: 1,
-    height: 44,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: 13,
-  },
-  sortOptionActive: { backgroundColor: colors.dark },
-  sortText: { fontSize: 14, fontWeight: '700', color: colors.text },
-  sortTextActive: { color: '#FFFFFF' },
-
-  // Results
-  listCard: { marginBottom: 24, position: 'relative' },
-  empty: { alignItems: 'center', paddingVertical: 40, gap: 4 },
-  emptyTitle: { fontSize: 18, fontWeight: '800', color: colors.text },
-  loadingNotice: { alignItems: 'center', gap: 10, marginVertical: 10 },
-  skeletonCard: { marginRight: 14 },
-  skeletonPhoto: { backgroundColor: '#E6E8E2', borderRadius: 20, marginBottom: 12 },
-  skeletonLine: { height: 14, width: '72%', borderRadius: 8, backgroundColor: '#E6E8E2', marginBottom: 8 },
-  skeletonShort: { width: '42%', height: 11 },
+  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingTop: 12 },
+  brand: { fontSize: 22, fontWeight: '700', color: colors.dark, letterSpacing: -0.5 },
+  tagline: { fontSize: 13, color: colors.muted, marginTop: 2 },
+  profileBtn: { padding: 8, borderRadius: 999 },
+  hero: { marginHorizontal: 16, marginTop: 16, borderRadius: 16, overflow: 'hidden', position: 'relative', height: 320 },
+  heroImage: { width: '100%', height: 320, resizeMode: 'cover' },
+  heroOverlay: { position: 'absolute', bottom: 0, left: 0, right: 0, padding: 20, backgroundColor: 'rgba(20,37,42,0.55)' },
+  heroTitle: { fontSize: 26, fontWeight: '700', color: '#fff', lineHeight: 30 },
+  heroSub: { fontSize: 14, color: '#EAECEA', marginTop: 6, lineHeight: 20 },
+  ctaButton: { marginTop: 14, backgroundColor: '#fff', alignSelf: 'flex-start', paddingVertical: 10, paddingHorizontal: 18, borderRadius: 999 },
+  ctaText: { fontWeight: '600', color: colors.dark, fontSize: 15 },
+  searchCard: { flexDirection: 'row', alignItems: 'center', marginHorizontal: 16, marginTop: 16, backgroundColor: '#fff', padding: 14, borderRadius: 12, borderWidth: 1, borderColor: colors.border },
+  searchInput: { flex: 1, marginLeft: 10, fontSize: 15, color: colors.text },
+  section: { marginHorizontal: 16, marginTop: 28 },
+  sectionTitle: { fontSize: 20, fontWeight: '700', color: colors.dark, letterSpacing: -0.5 },
+  sectionHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  seeAll: { fontSize: 13, fontWeight: '600', color: colors.dark },
+  featuresGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginTop: 12 },
+  featureCard: { width: '47%', backgroundColor: '#fff', padding: 14, borderRadius: 12, borderWidth: 1, borderColor: colors.border },
+  featureTitle: { fontWeight: '600', fontSize: 13, color: colors.dark, marginTop: 6 },
+  featureDesc: { fontSize: 12, color: colors.muted, marginTop: 4, lineHeight: 16 },
+  carousel: { paddingHorizontal: 4, paddingTop: 8 },
+  card: { width: 260, marginRight: 12, backgroundColor: '#fff', borderRadius: 12, overflow: 'hidden', borderWidth: 1, borderColor: colors.border },
+  cardImage: { width: 260, height: 160, borderRadius: 12 },
+  cardBody: { padding: 10 },
+  cardName: { fontWeight: '600', fontSize: 14, color: colors.dark },
+  cardLocation: { fontSize: 12, color: colors.muted, marginTop: 2 },
+  cardPrice: { fontSize: 13, fontWeight: '600', color: colors.dark, marginTop: 4 },
+  promo: { flexDirection: 'row', alignItems: 'center', gap: 14, marginHorizontal: 16, marginTop: 24, padding: 16, backgroundColor: '#fff', borderRadius: 12, borderWidth: 1, borderColor: colors.border },
+  promoTitle: { fontWeight: '600', fontSize: 15, color: colors.dark },
+  promoDesc: { fontSize: 13, color: colors.muted, marginTop: 2 },
+  emptyBox: { paddingVertical: 40, alignItems: 'center' },
+  emptyText: { fontSize: 14, color: colors.muted },
+  retryBtn: { marginTop: 10, backgroundColor: colors.dark, paddingVertical: 8, paddingHorizontal: 16, borderRadius: 999 },
+  retryText: { color: '#fff', fontWeight: '600', fontSize: 13 },
 });
