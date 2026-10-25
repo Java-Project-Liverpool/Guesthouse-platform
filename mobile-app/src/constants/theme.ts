@@ -51,6 +51,13 @@ export const Fonts = Platform.select({
   },
 });
 
+export const Radii = {
+  card: 16,
+  pill: 9999,
+  sm: 8,
+  md: 12,
+} as const;
+
 export const Spacing = {
   half: 2,
   one: 4,
