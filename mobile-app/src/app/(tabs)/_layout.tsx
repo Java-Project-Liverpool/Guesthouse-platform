@@ -1,5 +1,5 @@
-import AppTabs from '@/components/app-tabs';
+import FloatingTabs from '@/components/floating-tabs';
 
 export default function TabsLayout() {
-  return <AppTabs />;
+  return <FloatingTabs />;
 }
