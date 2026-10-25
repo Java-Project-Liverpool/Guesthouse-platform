@@ -19,7 +19,7 @@ const colors = {
 };
 
 // The bar only shows on the three main tabs
-const TAB_PATHS = ['/', '/favourites', '/account'];
+const TAB_PATHS = ['/', '/explore', '/favourites', '/account'];
 
 export default function AppTabs() {
   return (
@@ -36,20 +36,9 @@ export default function AppTabs() {
           <TabTrigger name="account" href="/account" asChild>
             <TabButton>Account</TabButton>
           </TabTrigger>
-          {/* Screens that are not tabs */}
-          <TabTrigger name="details" href="/details" style={{ display: 'none' }} />
-          <TabTrigger name="search" href="/search" style={{ display: 'none' }} />
-          <TabTrigger name="explore" href="/explore" style={{ display: 'none' }} />
-          <TabTrigger name="settings" href="/settings" style={{ display: 'none' }} />
-          <TabTrigger name="edit-profile" href="/edit-profile" style={{ display: 'none' }} />
-          <TabTrigger name="forgot-password" href="/forgot-password" style={{ display: 'none' }} />
-          <TabTrigger name="reviews" href="/reviews" style={{ display: 'none' }} />
-          <TabTrigger name="write-review" href="/write-review" style={{ display: 'none' }} />
-          <TabTrigger name="compare" href="/compare" style={{ display: 'none' }} />
-          <TabTrigger name="gallery" href="/gallery" style={{ display: 'none' }} />
-                    <TabTrigger name="welcome" href={'/welcome' as never} style={{ display: 'none' }} />
-          <TabTrigger name="account-disabled" href={'/account-disabled' as never} style={{ display: 'none' }} />
-          <TabTrigger name="offline" href="/offline" style={{ display: 'none' }} />
+          <TabTrigger name="explore" href="/explore" asChild>
+            <TabButton>Explore</TabButton>
+          </TabTrigger>
         </CustomTabList>
       </TabList>
     </Tabs>
