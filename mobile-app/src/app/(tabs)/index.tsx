@@ -136,7 +136,7 @@ export default function HomeScreen() {
           <Ionicons name="chevron-forward" size={20} color={colors.muted} />
         </Pressable>
 
-        {!user && <LoginPrompt />}
+        {/* Login prompt handled by protected actions; removed broken unconditional render */}
       </ScrollView>
     </SafeAreaView>
   );
