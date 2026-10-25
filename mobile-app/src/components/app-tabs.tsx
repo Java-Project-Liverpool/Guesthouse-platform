@@ -36,22 +36,6 @@ export default function AppTabs() {
         />
       </NativeTabs.Trigger>
 
-      {/* Screens that are not tabs */}
-            {/* Screens that are not tabs */}
-      <NativeTabs.Trigger name="login" hidden />
-      <NativeTabs.Trigger name="details" hidden />
-      <NativeTabs.Trigger name="search" hidden />
-      <NativeTabs.Trigger name="explore" hidden />
-      <NativeTabs.Trigger name="settings" hidden />
-      <NativeTabs.Trigger name="edit-profile" hidden />
-      <NativeTabs.Trigger name="forgot-password" hidden />
-      <NativeTabs.Trigger name="reviews" hidden />
-      <NativeTabs.Trigger name="write-review" hidden />
-      <NativeTabs.Trigger name="compare" hidden />
-      <NativeTabs.Trigger name="gallery" hidden />
-      <NativeTabs.Trigger name="welcome" hidden />
-      <NativeTabs.Trigger name="account-disabled" hidden />
-      <NativeTabs.Trigger name="offline" hidden />
     </NativeTabs>
   );
 }
