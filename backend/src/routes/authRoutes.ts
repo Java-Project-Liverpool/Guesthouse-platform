@@ -117,8 +117,147 @@ router.post("/login", async (req: Request, res: Response) => {
   }
 });
 
-router.get("/me", authenticate, (req: Request, res: Response) => {
-  return res.json({ user: req.authenticatedUser });
+// GET /api/auth/me — Return the full profile of the authenticated account
+router.get("/me", authenticate, async (req: Request, res: Response) => {
+  try {
+    const user = await User.findById(req.authenticatedUser!.id);
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found." });
+    }
+
+    return res.json({
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        role: user.role
+      }
+    });
+  } catch (error) {
+    console.error("Could not load the current user.", error);
+    return res.status(500).json({ message: "Could not load the current user." });
+  }
+});
+
+// PUT /api/auth/profile — Update current authenticated user profile
+router.put("/profile", authenticate, async (req: Request, res: Response) => {
+  const { name, email } = (req.body ?? {}) as { name?: unknown; email?: unknown };
+
+  const updates: Record<string, string> = {};
+
+  if (name !== undefined) {
+    if (typeof name !== "string" || name.trim().length < 2) {
+      return res.status(400).json({ message: "Name must be at least 2 characters long." });
+    }
+    if (name.trim().length > 100) {
+      return res.status(400).json({ message: "Name cannot exceed 100 characters." });
+    }
+    updates.name = name.trim();
+  }
+
+  if (email !== undefined) {
+    if (typeof email !== "string" || email.trim().length === 0) {
+      return res.status(400).json({ message: "Email must be a non-empty string." });
+    }
+    const normalizedEmail = email.trim().toLowerCase();
+    if (normalizedEmail.length > 254) {
+      return res.status(400).json({ message: "Email cannot exceed 254 characters." });
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
+      return res.status(400).json({ message: "Enter a valid email address." });
+    }
+    updates.email = normalizedEmail;
+  }
+
+  if (Object.keys(updates).length === 0) {
+    return res.status(400).json({ message: "Provide a name or email to update." });
+  }
+
+  try {
+    const currentUser = await User.findById(req.authenticatedUser!.id);
+    if (!currentUser) {
+      return res.status(404).json({ message: "User not found." });
+    }
+
+    // The email is the login identifier, so it must stay unique across accounts.
+    if (updates.email && updates.email !== currentUser.email) {
+      const emailTaken = await User.exists({
+        email: updates.email,
+        _id: { $ne: currentUser._id }
+      });
+      if (emailTaken) {
+        return res.status(409).json({ message: "An account with this email already exists." });
+      }
+    }
+
+    const user = await User.findByIdAndUpdate(currentUser._id, { $set: updates }, {
+      new: true,
+      runValidators: true
+    });
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found." });
+    }
+
+    return res.json({
+      message: "Profile updated successfully.",
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        role: user.role
+      }
+    });
+  } catch (error) {
+    // The unique email index closes the race between the check above and the update.
+    if (isDuplicateKeyError(error)) {
+      return res.status(409).json({ message: "An account with this email already exists." });
+    }
+
+    console.error("Profile update failed.", error);
+    return res.status(500).json({ message: "Could not update profile." });
+  }
+});
+
+// PUT /api/auth/password — Change password for authenticated user
+router.put("/password", authenticate, async (req: Request, res: Response) => {
+  const { currentPassword, newPassword } = (req.body ?? {}) as {
+    currentPassword?: unknown;
+    newPassword?: unknown;
+  };
+
+  if (typeof currentPassword !== "string" || typeof newPassword !== "string") {
+    return res.status(400).json({
+      message: "currentPassword and newPassword are required as strings."
+    });
+  }
+
+  if (newPassword.length < 8) {
+    return res.status(400).json({
+      message: "New password must be at least 8 characters long."
+    });
+  }
+
+  try {
+    const user = await User.findById(req.authenticatedUser!.id).select("+passwordHash");
+    if (!user) {
+      return res.status(404).json({ message: "User not found." });
+    }
+
+    const matches = await user.comparePassword(currentPassword);
+    if (!matches) {
+      return res.status(401).json({ message: "Current password is incorrect." });
+    }
+
+    user.password = newPassword;
+    await user.save();
+
+    return res.json({ message: "Password updated successfully." });
+  } catch (error) {
+    console.error("Password update failed.", error);
+    return res.status(500).json({ message: "Could not update password." });
+  }
 });
 
 export default router;

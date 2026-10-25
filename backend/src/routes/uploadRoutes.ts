@@ -6,7 +6,8 @@ import {
   galleryFolder,
   logoFolder,
   maxImageSizeBytes,
-  uploadImage
+  uploadImage,
+  validateImageFile
 } from "../services/imageService";
 
 const router = Router();
@@ -79,8 +80,22 @@ router.post(
     }
 
     try {
-      const image = await uploadImage(req.file, folder);
-      return res.status(201).json(image);
+      validateImageFile(req.file);
+
+      // If Cloudinary credentials are set up, store in Cloudinary
+      if (process.env.CLOUDINARY_CLOUD_NAME) {
+        const image = await uploadImage(req.file, folder);
+        return res.status(201).json(image);
+      }
+
+      // Otherwise in development/prototype mode, return as data URI
+      const base64 = req.file.buffer.toString("base64");
+      const dataUri = `data:${req.file.mimetype};base64,${base64}`;
+      const uniqueId = `prototype-${type}-${Date.now()}`;
+      return res.status(201).json({
+        url: dataUri,
+        publicId: uniqueId
+      });
     } catch (error) {
       // A bad file type or size is the client's mistake
       if (error instanceof ImageValidationError) {

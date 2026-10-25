@@ -2,6 +2,7 @@ import { Router, type Request, type Response } from "express";
 import mongoose from "mongoose";
 import { authenticate, requireAdmin } from "../middleware/authMiddleware";
 import Guesthouse from "../models/Guesthouse";
+import Rating from "../models/Rating";
 import {
   searchGuesthouses,
   type GuesthouseSearchParams
@@ -65,38 +66,51 @@ function parseOptionalNumber(value: unknown): number | undefined {
 function checkImageFields(fields: Record<string, unknown>): string | null {
   const has = (field: string) => Object.prototype.hasOwnProperty.call(fields, field);
 
-  // A URL and its public ID only make sense as a pair
-  if (has("logo") !== has("logoPublicId")) {
-    return "logo and logoPublicId must be sent together.";
-  }
-
-  if (has("gallery") !== has("galleryPublicIds")) {
-    return "gallery and galleryPublicIds must be sent together.";
-  }
-
-  if (has("logo") && !isOwnImage(fields.logo, fields.logoPublicId, logoFolder)) {
-    return "logo must be an image uploaded through the upload endpoint.";
-  }
-
-  if (has("gallery")) {
-    const gallery = fields.gallery;
-    const ids = fields.galleryPublicIds;
-
-    // The two lists must line up, one public ID for each URL
-    if (!Array.isArray(gallery) || !Array.isArray(ids) || gallery.length !== ids.length) {
-      return "gallery and galleryPublicIds must be lists of the same length.";
+  // When Cloudinary is configured, enforce strict Cloudinary uploads
+  if (process.env.CLOUDINARY_CLOUD_NAME) {
+    // A URL and its public ID only make sense as a pair
+    if (has("logo") !== has("logoPublicId")) {
+      return "logo and logoPublicId must be sent together.";
     }
 
-    const allValid = gallery.every((url, index) =>
-      isOwnImage(url, ids[index], galleryFolder)
-    );
-
-    if (!allValid) {
-      return "Every gallery image must be an image uploaded through the upload endpoint.";
+    if (has("gallery") !== has("galleryPublicIds")) {
+      return "gallery and galleryPublicIds must be sent together.";
     }
 
-    if (new Set(ids).size !== ids.length) {
-      return "The same image cannot be in the gallery twice.";
+    if (has("logo") && !isOwnImage(fields.logo, fields.logoPublicId, logoFolder)) {
+      return "logo must be an image uploaded through the upload endpoint.";
+    }
+
+    if (has("gallery")) {
+      const gallery = fields.gallery;
+      const ids = fields.galleryPublicIds;
+
+      // The two lists must line up, one public ID for each URL
+      if (!Array.isArray(gallery) || !Array.isArray(ids) || gallery.length !== ids.length) {
+        return "gallery and galleryPublicIds must be lists of the same length.";
+      }
+
+      const allValid = gallery.every((url, index) =>
+        isOwnImage(url, ids[index], galleryFolder)
+      );
+
+      if (!allValid) {
+        return "Every gallery image must be an image uploaded through the upload endpoint.";
+      }
+
+      if (new Set(ids).size !== ids.length) {
+        return "The same image cannot be in the gallery twice.";
+      }
+    }
+  } else {
+    // When Cloudinary credentials are not present (prototype/local dev), allow valid URLs
+    if (has("logo") && (typeof fields.logo !== "string" || fields.logo.trim() === "")) {
+      return "logo must be a valid image URL string.";
+    }
+    if (has("gallery")) {
+      if (!Array.isArray(fields.gallery) || fields.gallery.some((url) => typeof url !== "string")) {
+        return "gallery must be a list of image URL strings.";
+      }
     }
   }
 
@@ -450,6 +464,61 @@ router.delete("/:id", authenticate, requireAdmin, async (req: Request, res: Resp
   } catch (error) {
     console.error("Could not delete guesthouse.", error);
     return res.status(500).json({ message: "Could not delete guesthouse." });
+  }
+});
+
+// POST /api/guesthouses/:id/ratings — Authenticated customer reviews a guesthouse
+router.post("/:id/ratings", authenticate, async (req: Request, res: Response) => {
+  if (!mongoose.isObjectIdOrHexString(req.params.id)) {
+    return res.status(400).json({ message: "Guesthouse ID is invalid." });
+  }
+
+  const { rating, comment } = (req.body ?? {}) as { rating?: unknown; comment?: unknown };
+  const numericRating = Number(rating);
+
+  if (!Number.isInteger(numericRating) || numericRating < 1 || numericRating > 5) {
+    return res.status(400).json({ message: "Rating must be an integer between 1 and 5." });
+  }
+
+  try {
+    const guesthouse = await Guesthouse.findById(req.params.id);
+    if (!guesthouse) {
+      return res.status(404).json({ message: "Guesthouse not found." });
+    }
+
+    const ratingDoc = await Rating.findOneAndUpdate(
+      { customerId: req.authenticatedUser!.id, guesthouseId: req.params.id },
+      {
+        $set: {
+          rating: numericRating,
+          comment: typeof comment === "string" ? comment.trim() : ""
+        }
+      },
+      { upsert: true, new: true, runValidators: true }
+    );
+
+    return res.status(201).json({ rating: ratingDoc });
+  } catch (error) {
+    console.error("Could not post rating.", error);
+    return res.status(500).json({ message: "Could not post rating." });
+  }
+});
+
+// GET /api/guesthouses/:id/ratings — List all ratings for a guesthouse
+router.get("/:id/ratings", async (req: Request, res: Response) => {
+  if (!mongoose.isObjectIdOrHexString(req.params.id)) {
+    return res.status(400).json({ message: "Guesthouse ID is invalid." });
+  }
+
+  try {
+    const ratings = await Rating.find({ guesthouseId: req.params.id })
+      .populate("customerId", "name")
+      .sort({ createdAt: -1 });
+
+    return res.json({ ratings });
+  } catch (error) {
+    console.error("Could not get ratings.", error);
+    return res.status(500).json({ message: "Could not retrieve ratings." });
   }
 });
 
