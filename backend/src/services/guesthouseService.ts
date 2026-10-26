@@ -158,6 +158,7 @@ export interface GuesthouseSearchParams {
   sortBy?: string;
   page?: number;
   limit?: number;
+  includeHidden?: boolean;
 }
 
 /*
@@ -191,7 +192,8 @@ export const searchGuesthouses = async (params: GuesthouseSearchParams) => {
     verified = false,
     sortBy = "price_asc",
     page = 1,
-    limit = 20
+    limit = 20,
+    includeHidden = false
   } = params;
 
   const sort = searchSortOptions[sortBy];
@@ -200,7 +202,10 @@ export const searchGuesthouses = async (params: GuesthouseSearchParams) => {
     throw new Error("Invalid sortBy option.");
   }
 
-  const match: Record<string, any> = { isActive: true };
+  const match: Record<string, any> = {};
+  if (!includeHidden) {
+    match.isActive = true;
+  }
 
   if (name) {
     match.name = { $regex: escapeRegex(name), $options: "i" };

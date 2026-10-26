@@ -49,6 +49,7 @@ export const GuesthouseList: React.FC = () => {
         name: searchTerm.trim() || undefined,
         city: selectedCity !== 'All cities' ? selectedCity : undefined,
         limit: 100,
+        includeHidden: true,
       })
         .then((res) => {
           if (isMounted && res?.guesthouses) {
