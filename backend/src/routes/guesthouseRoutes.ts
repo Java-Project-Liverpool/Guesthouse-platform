@@ -218,6 +218,10 @@ router.get("/search", async (req: Request, res: Response) => {
     params.verified = true;
   }
 
+  if (req.query.includeHidden === "true") {
+    params.includeHidden = true;
+  }
+
   if (minPrice !== undefined) params.minPrice = minPrice;
   if (maxPrice !== undefined) params.maxPrice = maxPrice;
   if (minRating !== undefined) params.minRating = minRating;

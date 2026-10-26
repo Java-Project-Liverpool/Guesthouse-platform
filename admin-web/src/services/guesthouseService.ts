@@ -12,6 +12,7 @@ export interface SearchGuesthouseParams {
   verified?: boolean;
   page?: number;
   limit?: number;
+  includeHidden?: boolean;
 }
 
 export interface SearchGuesthouseResponse {
@@ -41,6 +42,7 @@ export async function searchGuesthouses(
   if (params.verified) query.append('verified', 'true');
   if (params.page) query.append('page', String(params.page));
   if (params.limit) query.append('limit', String(params.limit));
+  if (params.includeHidden) query.append('includeHidden', 'true');
 
   const qs = query.toString();
   return apiFetch<SearchGuesthouseResponse>(`/guesthouses/search${qs ? `?${qs}` : ''}`);
