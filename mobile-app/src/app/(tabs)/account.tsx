@@ -1,5 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import { useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -39,9 +40,11 @@ export default function AccountScreen() {
   const router = useRouter();
   const { user, restoring } = useAuth();
   const { saved } = useFavourites();
+  const [confirmLogout, setConfirmLogout] = useState(false);
 
-  const handleLogout = () => {
+  const handleLogoutConfirm = () => {
     void logout();
+    setConfirmLogout(false);
     router.replace('/');
   };
 
@@ -100,14 +103,35 @@ export default function AccountScreen() {
         {/* Links */}
         <View style={[styles.card, styles.list]}>
           <Row label="My favourites" value={saved.length} onPress={() => router.push('/favourites')} />
-          <Row label="Edit profile" onPress={() => router.push('/edit-profile')} />
           <Row label="Settings" onPress={() => router.push('/settings')} last />
         </View>
 
         {/* Logout */}
-        <Pressable style={styles.logoutButton} onPress={handleLogout}>
+        <Pressable style={styles.logoutButton} onPress={() => setConfirmLogout(true)}>
           <Text style={styles.logoutText}>Log out</Text>
         </Pressable>
+
+        {/* Confirmation dialog */}
+        {confirmLogout && (
+          <View style={styles.modalBackdrop}>
+            <View style={styles.modal}>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>Log out</Text>
+              </View>
+              <Text style={styles.modalBody}>
+                Are you sure you want to log out? You will need to sign in again to access your saved stays and reviews.
+              </Text>
+              <View style={styles.modalActions}>
+                <Pressable style={styles.modalCancel} onPress={() => setConfirmLogout(false)}>
+                  <Text style={styles.modalCancelText}>Not now</Text>
+                </Pressable>
+                <Pressable style={styles.modalConfirm} onPress={handleLogoutConfirm}>
+                  <Text style={styles.modalConfirmText}>Log out</Text>
+                </Pressable>
+              </View>
+            </View>
+          </View>
+        )}
       </ScrollView>
     </SafeAreaView>
   );
@@ -194,4 +218,15 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   logoutText: { fontSize: 16, fontWeight: '700', color: colors.dark },
+
+  modalBackdrop: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', alignItems: 'center', justifyContent: 'center', padding: 24 },
+  modal: { backgroundColor: colors.card, borderRadius: 20, padding: 24, width: '100%', maxWidth: 360 },
+  modalHeader: { marginBottom: 12 },
+  modalTitle: { fontSize: 20, fontWeight: '800', color: colors.text },
+  modalBody: { fontSize: 15, color: colors.muted, lineHeight: 22, marginBottom: 20 },
+  modalActions: { flexDirection: 'row', justifyContent: 'flex-end', gap: 12 },
+  modalCancel: { paddingVertical: 10, paddingHorizontal: 18, borderRadius: 999, borderWidth: 1, borderColor: colors.border },
+  modalCancelText: { fontSize: 15, fontWeight: '700', color: colors.muted },
+  modalConfirm: { paddingVertical: 10, paddingHorizontal: 18, borderRadius: 999, backgroundColor: colors.danger },
+  modalConfirmText: { fontSize: 15, fontWeight: '700', color: '#FFFFFF' },
 });

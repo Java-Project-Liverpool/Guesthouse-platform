@@ -31,7 +31,7 @@ function TabButton({ label, icon, activeIcon, isFocused, ...pressableProps }: Ta
         <Ionicons
           name={isFocused ? activeIcon : icon}
           size={20}
-          color={isFocused ? Colors.light.primary : '#E1E9E3'}
+          color={isFocused ? '#14352A' : '#E1E9E3'}
         />
         <Text style={[styles.tabLabel, isFocused && styles.tabLabelActive]}>{label}</Text>
       </View>
