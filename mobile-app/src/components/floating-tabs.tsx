@@ -11,7 +11,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import type { ComponentProps } from 'react';
 
-import { Colors, Radii, TabBarHeight, Typography } from '@/constants/theme';
+import { Colors, Radii, Typography } from '@/constants/theme';
 
 type TabButtonProps = Omit<TabTriggerSlotProps, 'ref'> & {
   label: string;
@@ -31,7 +31,7 @@ function TabButton({ label, icon, activeIcon, isFocused, ...pressableProps }: Ta
         <Ionicons
           name={isFocused ? activeIcon : icon}
           size={20}
-          color={isFocused ? Colors.light.primary : '#E1E9E3'}
+          color={isFocused ? '#14352A' : '#E1E9E3'}
         />
         <Text style={[styles.tabLabel, isFocused && styles.tabLabelActive]}>{label}</Text>
       </View>
@@ -41,7 +41,6 @@ function TabButton({ label, icon, activeIcon, isFocused, ...pressableProps }: Ta
 
 function FloatingTabList(props: TabListProps) {
   const insets = useSafeAreaInsets();
-
   return (
     <View
       {...props}
@@ -91,34 +90,23 @@ const styles = StyleSheet.create({
   bar: {
     width: '100%',
     maxWidth: 440,
-    minHeight: TabBarHeight,
+    minHeight: 56,
     padding: 6,
     borderRadius: Radii.pill,
-    backgroundColor: Colors.light.primary,
+    backgroundColor: '#14352A',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    elevation: 12,
-    shadowColor: '#14241C',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.2,
-    shadowRadius: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 6,
   },
-  tabPressable: { flex: 1, minWidth: 0, minHeight: TabBarHeight - 12 },
-  tabContent: {
-    flex: 1,
-    minHeight: TabBarHeight - 12,
-    borderRadius: Radii.pill,
-    overflow: 'hidden',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 2,
-  },
-  tabContentActive: { backgroundColor: '#F3F0E7', borderRadius: Radii.pill, overflow: 'hidden' },
-  tabLabel: {
-    ...Typography.navigation,
-    color: '#E1E9E3',
-  },
-  tabLabelActive: { color: Colors.light.primary },
+  tabPressable: { flex: 1, borderRadius: Radii.pill, alignItems: 'center', justifyContent: 'center', paddingVertical: 4 },
   pressed: { opacity: 0.82 },
+  tabContent: { alignItems: 'center', justifyContent: 'center', paddingVertical: 2 },
+  tabContentActive: { backgroundColor: '#FFFFFF', borderRadius: Radii.pill, paddingHorizontal: 10, paddingVertical: 4 },
+  tabLabel: { fontSize: 10, fontWeight: '500', color: '#E1E9E3', marginTop: 2 },
+  tabLabelActive: { color: '#14352A', fontWeight: '700' },
 });

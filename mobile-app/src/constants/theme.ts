@@ -51,6 +51,13 @@ export const Fonts = Platform.select({
   },
 });
 
+export const Radii = {
+  card: 16,
+  pill: 9999,
+  sm: 8,
+  md: 12,
+} as const;
+
 export const Spacing = {
   half: 2,
   one: 4,
@@ -61,5 +68,13 @@ export const Spacing = {
   six: 64,
 } as const;
 
+export const Typography = {
+  cardTitle: { fontSize: 16, fontWeight: '600', lineHeight: 22 },
+  supporting: { fontSize: 13, fontWeight: '400', lineHeight: 18 },
+  metadata: { fontSize: 11, fontWeight: '400', lineHeight: 14 },
+  cardTitleLarge: { fontSize: 18, fontWeight: '700', lineHeight: 24 },
+} as const;
+
 export const BottomTabInset = Platform.select({ ios: 50, android: 80 }) ?? 0;
+export const TabBarHeight = 56;
 export const MaxContentWidth = 800;

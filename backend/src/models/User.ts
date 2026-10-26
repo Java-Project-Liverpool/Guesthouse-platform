@@ -12,6 +12,7 @@ export interface IUser extends Document {
   role: UserRole;
   authProvider: AuthProvider;
   googleId?: string;
+  isActive: boolean;
   createdAt: Date;
   updatedAt: Date;
   /** Virtual input; plaintext is never persisted. */
@@ -71,6 +72,11 @@ const userSchema = new Schema<IUser>(
       required: function (this: IUser) {
         return this.authProvider === "google";
       }
+    },
+    isActive: {
+      type: Boolean,
+      default: true,
+      required: true
     }
   },
   {
