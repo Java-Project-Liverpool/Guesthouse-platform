@@ -9,6 +9,7 @@ export interface User {
   email: string;
   role: UserRole;
   authProvider?: AuthProvider;
+  isActive?: boolean;
   createdAt?: string;
   updatedAt?: string;
 }
