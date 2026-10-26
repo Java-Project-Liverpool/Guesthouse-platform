@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { gsap } from 'gsap';
 import { SearchIcon, AppUsersIcon } from '../components/ui/Icons';
-import { getCustomerUsers } from '../services/userService';
+import { getCustomerUsers, suspendCustomer } from '../services/userService';
 import type { User } from '../types';
 
 export const Users: React.FC = () => {
@@ -11,6 +11,7 @@ export const Users: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [providerFilter, setProviderFilter] = useState<'all' | 'local' | 'google'>('all');
   const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const [suspendingId, setSuspendingId] = useState<string | null>(null);
 
   const tableRef = useRef<HTMLTableSectionElement>(null);
 
@@ -74,6 +75,20 @@ export const Users: React.FC = () => {
       providerFilter === 'all' || (u.authProvider || 'local') === providerFilter;
     return matchesSearch && matchesProvider;
   });
+
+  const handleStatusChange = async (userId: string, currentStatus: boolean | undefined) => {
+    const newStatus = !(currentStatus === false); // if false -> reactivate (true); else suspend (false)
+    if (newStatus === false && !window.confirm('Suspend this account? The user will be denied access.')) return;
+    setSuspendingId(userId);
+    try {
+      await suspendCustomer(userId, newStatus);
+      setRefreshTrigger((p) => p + 1);
+    } catch (e: unknown) {
+      alert(e instanceof Error ? e.message : 'Failed to update status.');
+    } finally {
+      setSuspendingId(null);
+    }
+  };
 
   const formatDate = (iso?: string) => {
     if (!iso) return '-';
@@ -253,6 +268,8 @@ export const Users: React.FC = () => {
                   <th style={{ paddingBottom: '0.75rem', fontWeight: 600 }}>Auth provider</th>
                   <th style={{ paddingBottom: '0.75rem', fontWeight: 600 }}>Joined</th>
                   <th style={{ paddingBottom: '0.75rem', fontWeight: 600 }}>Role</th>
+                  <th style={{ paddingBottom: '0.75rem', fontWeight: 600 }}>Status</th>
+                  <th style={{ paddingBottom: '0.75rem', fontWeight: 600 }}>Action</th>
                 </tr>
               </thead>
               <tbody ref={tableRef}>
@@ -335,6 +352,28 @@ export const Users: React.FC = () => {
                           >
                             Customer
                           </span>
+                        </td>
+                        <td style={{ padding: '1rem 0', fontWeight: 600, color: user.isActive === false ? 'var(--danger)' : '#166534' }}>
+                          {user.isActive === false ? 'Suspended' : 'Active'}
+                        </td>
+                        <td style={{ padding: '1rem 0' }}>
+                          <button
+                            type="button"
+                            onClick={() => handleStatusChange(user._id, user.isActive)}
+                            disabled={suspendingId === user._id}
+                            style={{
+                              padding: '0.35rem 0.7rem',
+                              borderRadius: 8,
+                              border: 'none',
+                              background: user.isActive === false ? 'var(--primary)' : '#B3261E',
+                              color: '#fff',
+                              fontSize: '0.8rem',
+                              fontWeight: 600,
+                              cursor: 'pointer',
+                            }}
+                          >
+                            {suspendingId === user._id ? 'Working...' : (user.isActive === false ? 'Reactivate' : 'Suspend')}
+                          </button>
                         </td>
                       </tr>
                     );

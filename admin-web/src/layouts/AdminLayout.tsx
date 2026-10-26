@@ -277,7 +277,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
         </header>
 
         {/* Page Content */}
-        <main style={{ padding: '2rem 2.5rem 3rem', flex: 1, maxWidth: 1200, width: '100%' }}>
+        <main style={{ padding: '2rem 2.5rem 3rem', flex: 1, maxWidth: 1400, width: '100%' }}>
           {children}
         </main>
       </div>

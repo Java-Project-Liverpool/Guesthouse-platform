@@ -276,4 +276,38 @@ router.delete("/ratings/:id", authenticate, requireAdmin, async (req: Request, r
   }
 });
 
+// PUT /api/admin/customers/:id/status — Suspend or activate a customer
+router.put("/customers/:id/status", authenticate, requireAdmin, async (req: Request, res: Response) => {
+  if (!mongoose.isObjectIdOrHexString(req.params.id)) {
+    return res.status(400).json({ message: "Customer ID is invalid." });
+  }
+  if (!req.body || typeof req.body !== "object" || Array.isArray(req.body)) {
+    return res.status(400).json({ message: "Request body must be a JSON object." });
+  }
+  const { isActive } = req.body as { isActive?: unknown };
+  if (typeof isActive !== "boolean") {
+    return res.status(400).json({ message: "isActive must be a boolean (true or false)." });
+  }
+
+  // Prevent admin from suspending their own account through customer interface
+  if (req.authenticatedUser && req.authenticatedUser.id === req.params.id && isActive === false) {
+    return res.status(403).json({ message: "Cannot suspend your own account through the customer interface." });
+  }
+
+  try {
+    const user = await User.findOne({ _id: req.params.id, role: "customer" });
+    if (!user) {
+      return res.status(404).json({ message: "Customer not found." });
+    }
+
+    user.isActive = isActive;
+    await user.save();
+
+    return res.json({ message: isActive ? "Account reactivated." : "Account suspended.", user: { id: user._id, name: user.name, email: user.email, isActive: user.isActive, role: user.role } });
+  } catch (error) {
+    console.error("Customer status update failed.", error);
+    return res.status(500).json({ message: "Could not update customer status." });
+  }
+});
+
 export default router;
