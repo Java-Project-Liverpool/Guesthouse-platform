@@ -16,6 +16,105 @@ import {
 } from '../services/guesthouseService';
 import type { Guesthouse } from '../types';
 
+type CityDropdownProps = {
+  value: string;
+  options: string[];
+  onChange: (val: string) => void;
+};
+
+function CustomCityDropdown({ value, options, onChange }: CityDropdownProps) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function onClick(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    }
+    function onKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') setOpen(false);
+    }
+    document.addEventListener('mousedown', onClick);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('mousedown', onClick);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, []);
+
+  return (
+    <div ref={ref} style={{ position: 'relative', minWidth: 160 }}>
+      <button
+        type="button"
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        onClick={() => setOpen((p) => !p)}
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: '0.5rem',
+          padding: '0.45rem 0.8rem',
+          borderRadius: 12,
+          border: '1px solid var(--border-main)',
+          background: '#FFFFFF',
+          color: 'var(--text-main)',
+          fontWeight: 600,
+          fontSize: '0.95rem',
+          cursor: 'pointer',
+          boxShadow: 'var(--shadow-sm)',
+          minWidth: 160,
+        }}
+      >
+        <span>{value}</span>
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="3 5 7 9 11 5"/></svg>
+      </button>
+      {open && (
+        <ul
+          role="listbox"
+          aria-label="Select city"
+          style={{
+            position: 'absolute',
+            top: 'calc(100% + 0.35rem)',
+            left: 0,
+            right: 0,
+            background: '#FFFFFF',
+            border: '1px solid var(--border-main)',
+            borderRadius: 14,
+            boxShadow: 'var(--shadow-md)',
+            padding: '0.35rem',
+            zIndex: 50,
+            listStyle: 'none',
+            margin: 0,
+          }}
+        >
+          {options.map((opt) => (
+            <li key={opt} role="option" aria-selected={opt === value}>
+              <button
+                type="button"
+                onClick={() => { onChange(opt); setOpen(false); }}
+                style={{
+                  width: '100%',
+                  textAlign: 'left',
+                  padding: '0.55rem 0.7rem',
+                  borderRadius: 10,
+                  border: 'none',
+                  background: opt === value ? 'var(--primary)' : 'transparent',
+                  color: opt === value ? 'var(--primary-text)' : 'var(--text-main)',
+                  fontWeight: opt === value ? 700 : 500,
+                  fontSize: '0.9rem',
+                  cursor: 'pointer',
+                }}
+              >
+                {opt}
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
 export const GuesthouseList: React.FC = () => {
   const [guesthouses, setGuesthouses] = useState<Guesthouse[]>([]);
   const [total, setTotal] = useState(0);
@@ -197,26 +296,11 @@ export const GuesthouseList: React.FC = () => {
           }}
         />
 
-        <select
+        <CustomCityDropdown
           value={selectedCity}
-          onChange={(e) => setSelectedCity(e.target.value)}
-          style={{
-            border: 'none',
-            background: 'transparent',
-            color: 'var(--text-main)',
-            fontWeight: 600,
-            fontSize: '0.95rem',
-            outline: 'none',
-            cursor: 'pointer',
-            padding: '0.4rem 0.5rem',
-          }}
-        >
-          {cities.map((city) => (
-            <option key={city} value={city}>
-              {city}
-            </option>
-          ))}
-        </select>
+          options={cities}
+          onChange={(val) => setSelectedCity(val)}
+        />
       </div>
 
       {/* Table Card */}
