@@ -1,6 +1,13 @@
 import { apiFetch } from './api';
 import type { User } from '../types';
 
+export async function suspendCustomer(id: string, isActive: boolean): Promise<{ message: string; user: User }> {
+  return apiFetch<{ message: string; user: User }>(`/admin/customers/${id}/status`, {
+    method: 'PUT',
+    body: JSON.stringify({ isActive }),
+  });
+}
+
 export async function createAdminUser(data: {
   name: string;
   email: string;

@@ -1,4 +1,5 @@
 import { Router, type Request, type Response } from "express";
+import jwt from "jsonwebtoken";
 import mongoose from "mongoose";
 import { authenticate, requireAdmin } from "../middleware/authMiddleware";
 import Guesthouse from "../models/Guesthouse";
@@ -242,7 +243,28 @@ router.get("/:id", async (req: Request, res: Response) => {
   }
 
   try {
-    const guesthouse = await Guesthouse.findOne({ _id: req.params.id, isActive: true });
+    // Check for admin authentication without requiring it
+    let isAdmin = false;
+    const authorization = req.get("authorization");
+    if (authorization) {
+      const match = authorization.match(/^Bearer\s+([\w.-]+)$/i);
+      if (match) {
+        try {
+          const payload = jwt.verify(match[1], require("../config/jwt").getJwtSecret(), { algorithms: ["HS256"] });
+          if (payload && (payload as any).sub && (payload as any).role === 'admin') {
+            isAdmin = true;
+          }
+        } catch {
+          // Ignore invalid token for public endpoint
+        }
+      }
+    }
+
+    const query: Record<string, unknown> = { _id: req.params.id };
+    if (!isAdmin) {
+      query.isActive = true;
+    }
+    const guesthouse = await Guesthouse.findOne(query);
     if (!guesthouse) {
       return res.status(404).json({ message: "Guesthouse not found." });
     }

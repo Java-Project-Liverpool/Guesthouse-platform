@@ -179,7 +179,7 @@ export const Dashboard: React.FC = () => {
           borderRadius: 20,
           padding: '2rem',
           color: 'var(--text-main)',
-          maxWidth: 600,
+          maxWidth: 900,
         }}
       >
         <div style={{ color: 'var(--danger)', fontWeight: 700, fontSize: '1.15rem', marginBottom: '0.5rem' }}>

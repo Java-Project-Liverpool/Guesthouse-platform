@@ -2,10 +2,11 @@ import type { RequestHandler } from "express";
 import jwt from "jsonwebtoken";
 import { getJwtSecret } from "../config/jwt";
 import type { UserRole } from "../models/User";
+import User from "../models/User";
 
 const validRoles: UserRole[] = ["admin", "customer"];
 
-export const authenticate: RequestHandler = (req, res, next) => {
+export const authenticate: RequestHandler = async (req, res, next) => {
   const authorization = req.get("authorization");
   const match = authorization?.match(/^Bearer\s+([^\s]+)$/i);
 
@@ -31,6 +32,12 @@ export const authenticate: RequestHandler = (req, res, next) => {
       id: payload.sub,
       role: payload.role as UserRole
     };
+
+    // Enforce account suspension: suspended users denied protected access
+    const user = await User.findById(payload.sub).select("isActive").lean();
+    if (!user || user.isActive === false) {
+      return res.status(403).json({ message: "Account suspended.", code: "ACCOUNT_SUSPENDED" });
+    }
 
     return next();
   } catch (error) {
