@@ -6,10 +6,7 @@ import {
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import LoginPrompt from '@/components/login-prompt';
 import StayImage from '@/components/stay-image';
-import { Colors, Radii, Typography } from '@/constants/theme';
-import { useAuth } from '@/data/auth';
 import { useStays } from '@/data/stays';
 
 const colors = {
@@ -27,7 +24,6 @@ const colors = {
 export default function HomeScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { user } = useAuth();
   const { stays, loading, error, retry } = useStays();
   const [searchQuery, setSearchQuery] = useState('');
 

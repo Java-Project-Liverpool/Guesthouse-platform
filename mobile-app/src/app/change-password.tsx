@@ -20,7 +20,7 @@ const colors = {
 
 export default function ChangePasswordScreen() {
   const router = useRouter();
-  const { user } = useAuth();
+  const { user, token, restoring } = useAuth();
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -41,7 +41,7 @@ export default function ChangePasswordScreen() {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${user.token}`,
+          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({ currentPassword, newPassword }),
       });

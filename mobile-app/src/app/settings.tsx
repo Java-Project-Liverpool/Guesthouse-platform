@@ -6,6 +6,23 @@ import { useState } from 'react';
 
 import { logout as doLogout, useAuth } from '@/data/auth';
 
+type RowProps = { label: string; icon: string; onPress?: () => void; value?: string; last?: boolean };
+
+function SectionTitle({ title }: { title: string }) {
+  return <Text style={styles.sectionTitle}>{title}</Text>;
+}
+
+function Row({ label, icon, onPress, value, last }: RowProps) {
+  return (
+    <Pressable style={[styles.row, !last && styles.rowDivider]} onPress={onPress}>
+      <View style={styles.rowIcon}><Ionicons name={icon as any} size={20} color={colors.dark} /></View>
+      <Text style={styles.rowText}>{label}</Text>
+      {value !== undefined && <Text style={styles.rowValue}>{value}</Text>}
+      {onPress && <Ionicons name="chevron-forward" size={18} color={colors.muted} />}
+    </Pressable>
+  );
+}
+
 const colors = {
   background: '#F7F5F0',
   card: '#FFFFFF',
@@ -29,19 +46,6 @@ export default function SettingsScreen() {
     void doLogout();
     router.replace('/');
   };
-
-  const SectionTitle = ({ title }: { title: string }) => (
-    <Text style={styles.sectionTitle}>{title}</Text>
-  );
-
-  const Row = ({ label, icon, onPress, value, last }: { label: string; icon: string; onPress?: () => void; value?: string; last?: boolean }) => (
-    <Pressable style={[styles.row, !last && styles.rowDivider]} onPress={onPress}>
-      <View style={styles.rowIcon}><Ionicons name={icon as any} size={20} color={colors.dark} /></View>
-      <Text style={styles.rowText}>{label}</Text>
-      {value !== undefined && <Text style={styles.rowValue}>{value}</Text>}
-      {onPress && <Ionicons name="chevron-forward" size={18} color={colors.muted} />}
-    </Pressable>
-  );
 
   return (
     <SafeAreaView style={styles.screen}>
