@@ -1,6 +1,7 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { gsap } from 'gsap';
 import { SearchIcon, AppUsersIcon } from '../components/ui/Icons';
+import { CustomerStatusConfirmationModal } from '../components/ui/Modal';
 import { ApiError } from '../services/api';
 import { getCustomerUsers, suspendCustomer } from '../services/userService';
 import type { User } from '../types';
@@ -15,6 +16,13 @@ export const Users: React.FC = () => {
   const [suspendingIds, setSuspendingIds] = useState<Set<string>>(() => new Set());
   const [statusError, setStatusError] = useState('');
   const [statusSuccess, setStatusSuccess] = useState('');
+  const [statusConfirmation, setStatusConfirmation] = useState<{
+    userId: string;
+    customerName: string;
+    customerEmail: string;
+    isSuspending: boolean;
+    requestedIsActive: boolean;
+  } | null>(null);
   const statusRequests = useRef(new Set<string>());
 
   const tableRef = useRef<HTMLTableSectionElement>(null);
@@ -80,17 +88,34 @@ export const Users: React.FC = () => {
     return matchesSearch && matchesProvider;
   });
 
-  const handleStatusChange = async (userId: string, currentStatus: boolean | undefined) => {
+  const openStatusConfirmation = (user: User) => {
+    const isSuspending = user.isActive !== false;
+    setStatusError('');
+    setStatusSuccess('');
+    setStatusConfirmation({
+      userId: user._id,
+      customerName: user.name,
+      customerEmail: user.email,
+      isSuspending,
+      requestedIsActive: !isSuspending,
+    });
+  };
+
+  const closeStatusConfirmation = useCallback(() => {
+    if (!statusConfirmation || statusRequests.current.has(statusConfirmation.userId)) return;
+    setStatusConfirmation(null);
+  }, [statusConfirmation]);
+
+  const handleStatusChange = useCallback(async () => {
+    if (!statusConfirmation) return;
+    const { userId, requestedIsActive } = statusConfirmation;
     if (statusRequests.current.has(userId)) return;
-    // isActive=false means suspended; treat a missing legacy value as active.
-    const newStatus = currentStatus === false;
-    if (newStatus === false && !window.confirm('Suspend this account? The user will be denied access.')) return;
     statusRequests.current.add(userId);
     setSuspendingIds((current) => new Set(current).add(userId));
     setStatusError('');
     setStatusSuccess('');
     try {
-      const result = await suspendCustomer(userId, newStatus);
+      const result = await suspendCustomer(userId, requestedIsActive);
       if (result.user._id !== userId) {
         throw new ApiError('The server returned a different customer record.', 502);
       }
@@ -101,6 +126,7 @@ export const Users: React.FC = () => {
           ? 'Customer account unsuspended successfully.'
           : 'Customer account suspended successfully.'
       );
+      setStatusConfirmation(null);
     } catch (e: unknown) {
       if (e instanceof ApiError) {
         const messages: Record<number, string> = {
@@ -116,6 +142,7 @@ export const Users: React.FC = () => {
       } else {
         setStatusError('Could not reach the server. Check your connection and try again.');
       }
+      setStatusConfirmation(null);
     } finally {
       statusRequests.current.delete(userId);
       setSuspendingIds((current) => {
@@ -124,7 +151,7 @@ export const Users: React.FC = () => {
         return next;
       });
     }
-  };
+  }, [statusConfirmation]);
 
   const formatDate = (iso?: string) => {
     if (!iso) return '-';
@@ -407,7 +434,7 @@ export const Users: React.FC = () => {
                         <td style={{ padding: '1rem 0' }}>
                           <button
                             type="button"
-                            onClick={() => handleStatusChange(user._id, user.isActive)}
+                            onClick={() => openStatusConfirmation(user)}
                             disabled={suspendingIds.has(user._id)}
                             style={{
                               padding: '0.35rem 0.7rem',
@@ -432,6 +459,15 @@ export const Users: React.FC = () => {
           </div>
         )}
       </div>
+      <CustomerStatusConfirmationModal
+        isOpen={statusConfirmation !== null}
+        isSuspending={statusConfirmation?.isSuspending ?? false}
+        customerName={statusConfirmation?.customerName}
+        customerEmail={statusConfirmation?.customerEmail}
+        isLoading={statusConfirmation ? suspendingIds.has(statusConfirmation.userId) : false}
+        onClose={closeStatusConfirmation}
+        onConfirm={handleStatusChange}
+      />
     </div>
   );
 };

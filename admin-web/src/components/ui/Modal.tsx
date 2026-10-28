@@ -1,5 +1,140 @@
-import React, { useEffect } from 'react';
-import { HideIcon } from './Icons';
+import React, { useEffect, useRef } from 'react';
+import { AlertTriangleIcon, HideIcon } from './Icons';
+
+interface CustomerStatusConfirmationModalProps {
+  isOpen: boolean;
+  isSuspending: boolean;
+  customerName?: string;
+  customerEmail?: string;
+  isLoading?: boolean;
+  onClose: () => void;
+  onConfirm: () => void;
+}
+
+export const CustomerStatusConfirmationModal: React.FC<CustomerStatusConfirmationModalProps> = ({
+  isOpen,
+  isSuspending,
+  customerName,
+  customerEmail,
+  isLoading = false,
+  onClose,
+  onConfirm,
+}) => {
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const cancelRef = useRef<HTMLButtonElement>(null);
+  const isLoadingRef = useRef(isLoading);
+  const titleId = 'customer-status-confirmation-title';
+  const descriptionId = 'customer-status-confirmation-description';
+
+  useEffect(() => {
+    isLoadingRef.current = isLoading;
+  }, [isLoading]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const previousFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    cancelRef.current?.focus();
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        if (!isLoadingRef.current) onClose();
+        return;
+      }
+
+      if (event.key !== 'Tab' || !dialogRef.current) return;
+      const focusable = Array.from(
+        dialogRef.current.querySelectorAll<HTMLElement>('button:not(:disabled), [href], input:not(:disabled), [tabindex]:not([tabindex="-1"])')
+      );
+      if (focusable.length === 0) {
+        event.preventDefault();
+        dialogRef.current.focus();
+        return;
+      }
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+      previousFocus?.focus();
+    };
+  }, [isOpen, onClose]);
+
+  useEffect(() => {
+    if (isOpen && isLoading) dialogRef.current?.focus();
+  }, [isOpen, isLoading]);
+
+  if (!isOpen) return null;
+
+  const customer = customerName || customerEmail;
+  const title = isSuspending ? 'Suspend customer account?' : 'Restore customer account?';
+  const description = isSuspending
+    ? 'This customer will no longer be able to sign in or access customer-only features.'
+    : 'This customer will regain access to their account and be able to sign in again.';
+  const confirmLabel = isLoading
+    ? (isSuspending ? 'Suspending...' : 'Restoring...')
+    : (isSuspending ? 'Suspend Account' : 'Unsuspend Account');
+
+  return (
+    <div
+      className="customer-status-modal-backdrop"
+      onClick={(event) => {
+        if (event.target === event.currentTarget && !isLoading) onClose();
+      }}
+    >
+      <div
+        ref={dialogRef}
+        className="customer-status-modal"
+        role="dialog"
+        tabIndex={-1}
+        aria-modal="true"
+        aria-labelledby={titleId}
+        aria-describedby={descriptionId}
+      >
+        <div className={`customer-status-modal__icon${isSuspending ? ' customer-status-modal__icon--danger' : ''}`}>
+          <AlertTriangleIcon size={24} />
+        </div>
+        <h2 id={titleId} className="customer-status-modal__title">{title}</h2>
+        <p id={descriptionId} className="customer-status-modal__description">{description}</p>
+        {customer && (
+          <div className="customer-status-modal__identity">
+            {customerName && <strong>{customerName}</strong>}
+            {customerEmail && <span>{customerEmail}</span>}
+          </div>
+        )}
+        <div className="customer-status-modal__actions">
+          <button
+            ref={cancelRef}
+            type="button"
+            className="customer-status-modal__button customer-status-modal__button--secondary"
+            onClick={onClose}
+            disabled={isLoading}
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            className={`customer-status-modal__button ${isSuspending ? 'customer-status-modal__button--danger' : 'customer-status-modal__button--primary'}`}
+            onClick={onConfirm}
+            disabled={isLoading}
+            aria-busy={isLoading}
+          >
+            {confirmLabel}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 interface HideGuesthouseModalProps {
   isOpen: boolean;
