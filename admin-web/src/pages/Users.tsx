@@ -82,7 +82,8 @@ export const Users: React.FC = () => {
 
   const handleStatusChange = async (userId: string, currentStatus: boolean | undefined) => {
     if (statusRequests.current.has(userId)) return;
-    const newStatus = !(currentStatus === false); // if false -> reactivate (true); else suspend (false)
+    // isActive=false means suspended; treat a missing legacy value as active.
+    const newStatus = currentStatus === false;
     if (newStatus === false && !window.confirm('Suspend this account? The user will be denied access.')) return;
     statusRequests.current.add(userId);
     setSuspendingIds((current) => new Set(current).add(userId));
@@ -419,7 +420,7 @@ export const Users: React.FC = () => {
                               cursor: 'pointer',
                             }}
                           >
-                            {suspendingIds.has(user._id) ? 'Working...' : (user.isActive === false ? 'Unsuspend' : 'Suspend')}
+                            {suspendingIds.has(user._id) ? 'Processing...' : (user.isActive === false ? 'Unsuspend' : 'Suspend')}
                           </button>
                         </td>
                       </tr>
