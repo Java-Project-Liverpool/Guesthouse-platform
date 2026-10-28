@@ -5,11 +5,20 @@ export const API_BASE_URL = (
 export class ApiError extends Error {
   constructor(
     message: string,
-    public readonly status?: number
+    public readonly status?: number,
+    public readonly code?: string
   ) {
     super(message);
     this.name = 'ApiError';
   }
+}
+
+let accountSuspensionHandler: ((token: string | null | undefined) => void) | undefined;
+
+export function setAccountSuspensionHandler(
+  handler: (token: string | null | undefined) => void
+) {
+  accountSuspensionHandler = handler;
 }
 
 type RequestOptions = {
@@ -36,6 +45,10 @@ export async function apiRequest<T>(path: string, options: RequestOptions = {}):
     });
     const data: unknown = response.status === 204 ? undefined : await response.json().catch(() => undefined);
     if (!response.ok) {
+      const code =
+        data && typeof data === 'object' && 'code' in data && typeof data.code === 'string'
+          ? data.code
+          : undefined;
       const fieldErrors =
         data && typeof data === 'object' && 'errors' in data && data.errors && typeof data.errors === 'object'
           ? Object.values(data.errors).filter((value): value is string => typeof value === 'string').join(' ')
@@ -44,7 +57,8 @@ export async function apiRequest<T>(path: string, options: RequestOptions = {}):
         fieldErrors || (data && typeof data === 'object' && 'message' in data && typeof data.message === 'string')
           ? fieldErrors || (data as { message?: string }).message!
           : `The server returned an error (${response.status}).`;
-      throw new ApiError(message, response.status);
+      if (code === 'ACCOUNT_SUSPENDED') accountSuspensionHandler?.(options.token);
+      throw new ApiError(message, response.status, code);
     }
     return data as T;
   } catch (error) {

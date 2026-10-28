@@ -96,6 +96,14 @@ router.post("/login", async (req: Request, res: Response) => {
       return res.status(401).json({ message: "Invalid email or password." });
     }
 
+    // Check status only after the password matches so suspended accounts cannot be enumerated.
+    if (user.role === "customer" && user.isActive === false) {
+      return res.status(403).json({
+        code: "ACCOUNT_SUSPENDED",
+        message: "Your account has been suspended. Please contact support."
+      });
+    }
+
     const token = jwt.sign(
       { role: user.role },
       getJwtSecret(),

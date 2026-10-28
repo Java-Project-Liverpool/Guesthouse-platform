@@ -2,7 +2,7 @@ import * as SecureStore from 'expo-secure-store';
 import { Platform } from 'react-native';
 import { useSyncExternalStore } from 'react';
 
-import { ApiError, apiRequest } from '@/data/api';
+import { ApiError, apiRequest, setAccountSuspensionHandler } from '@/data/api';
 
 export type User = { id: string; name: string; email: string; role: string };
 type Session = { user: User; token: string } | null;
@@ -11,6 +11,7 @@ type AuthResponse = { token: string; user: { id?: string; _id?: string; name: st
 const storageKey = 'dumela-auth-session';
 let session: Session = null;
 let restoring = true;
+let accountSuspended = false;
 const listeners = new Set<() => void>();
 
 function subscribe(listener: () => void) {
@@ -34,9 +35,23 @@ async function persist(next: Session) {
 
 async function setSession(next: Session) {
   session = next;
+  if (next) accountSuspended = false;
   notify();
   await persist(next);
 }
+
+function invalidateSuspendedSession(token?: string | null) {
+  if (session && token && session.token !== token) return;
+  session = null;
+  accountSuspended = true;
+  notify();
+  void persist(null).catch(() => undefined);
+}
+
+setAccountSuspensionHandler((token) => {
+  if (!token || session?.token !== token) return;
+  invalidateSuspendedSession(token);
+});
 
 export async function restoreSession() {
   let restored: Session = null;
@@ -47,31 +62,49 @@ export async function restoreSession() {
         const cached = JSON.parse(stored) as Session;
         if (cached?.token && cached.user) {
           restored = cached;
-          session = cached;
         }
       }
     }
   } catch {
     session = null;
-  } finally {
-    restoring = false;
-    notify();
   }
 
-  // Show the cached account right away, then refresh it without blocking app launch.
+  // Validate the stored token before showing authenticated screens.
   if (restored) {
-    void apiRequest<{ user: AuthResponse['user'] }>('/api/auth/me', { token: restored.token })
-      .then(async (result) => {
-        if (session?.token !== restored?.token) return;
-        session = { token: restored.token, user: normaliseUser(result.user) };
-        notify();
-        await persist(session);
-      })
-      .catch(async (error: unknown) => {
-        if (session?.token !== restored?.token) return;
-        if (error instanceof ApiError && (error.status === 401 || error.status === 404)) await logout();
-        // Keep the saved session available while the API is temporarily unreachable.
-      });
+    try {
+      const result = await apiRequest<{ user: AuthResponse['user'] }>('/api/auth/me', { token: restored.token });
+      session = { token: restored.token, user: normaliseUser(result.user) };
+      await persist(session);
+    } catch (error: unknown) {
+      if (error instanceof ApiError && error.code === 'ACCOUNT_SUSPENDED') {
+        invalidateSuspendedSession(restored.token);
+      } else if (error instanceof ApiError && (error.status === 401 || error.status === 404)) {
+        await persist(null);
+      } else {
+        // Keep the session available during a temporary outage; protected API calls remain server-checked.
+        session = restored;
+      }
+    }
+  }
+
+  restoring = false;
+  notify();
+}
+
+export async function validateSession() {
+  if (!session) return;
+  const token = session.token;
+  try {
+    const result = await apiRequest<{ user: AuthResponse['user'] }>('/api/auth/me', { token });
+    if (session?.token !== token) return;
+    session = { token, user: normaliseUser(result.user) };
+    notify();
+  } catch (error: unknown) {
+    if (error instanceof ApiError && error.code === 'ACCOUNT_SUSPENDED') {
+      invalidateSuspendedSession(token);
+    } else if (error instanceof ApiError && (error.status === 401 || error.status === 404)) {
+      if (session?.token === token) await logout();
+    }
   }
 }
 
@@ -104,11 +137,23 @@ export async function updateProfile(values: { name: string; email: string }) {
 }
 
 export async function logout() {
+  accountSuspended = false;
   await setSession(null);
+}
+
+export function clearAccountSuspension() {
+  accountSuspended = false;
+  notify();
 }
 
 export function useAuth() {
   const current = useSyncExternalStore(subscribe, () => session, () => session);
   const isRestoring = useSyncExternalStore(subscribe, () => restoring, () => restoring);
-  return { user: current?.user ?? null, token: current?.token ?? null, restoring: isRestoring };
+  const isAccountSuspended = useSyncExternalStore(subscribe, () => accountSuspended, () => accountSuspended);
+  return {
+    user: current?.user ?? null,
+    token: current?.token ?? null,
+    restoring: isRestoring,
+    accountSuspended: isAccountSuspended
+  };
 }

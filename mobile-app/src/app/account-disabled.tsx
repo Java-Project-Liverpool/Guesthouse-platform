@@ -2,6 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { clearAccountSuspension } from '@/data/auth';
 
 const colors = {
   background: '#F7F5F0',
@@ -20,15 +21,15 @@ export default function AccountDisabledScreen() {
         <View style={styles.iconCircle}>
           <Ionicons name="lock-closed-outline" size={34} color={colors.dark} />
         </View>
-        <Text style={styles.title}>Account disabled</Text>
+        <Text style={styles.title}>Account suspended</Text>
         <Text style={styles.body}>
-          Your account has been disabled by an administrator. Please contact the Dumela Stays team through its official support channel.
+          Your account has been suspended. Please contact the Dumela Stays team through its official support channel.
         </Text>
 
-        <Pressable style={styles.primaryButton} onPress={() => router.replace('/login')}>
+        <Pressable style={styles.primaryButton} onPress={() => { clearAccountSuspension(); router.replace('/login'); }}>
           <Text style={styles.primaryText}>Return to sign in</Text>
         </Pressable>
-        <Pressable style={styles.outlineButton} onPress={() => router.replace('/')}>
+        <Pressable style={styles.outlineButton} onPress={() => { clearAccountSuspension(); router.replace('/'); }}>
           <Text style={styles.outlineText}>Continue as guest</Text>
         </Pressable>
       </View>

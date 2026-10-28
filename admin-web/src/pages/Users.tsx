@@ -14,6 +14,7 @@ export const Users: React.FC = () => {
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [suspendingIds, setSuspendingIds] = useState<Set<string>>(() => new Set());
   const [statusError, setStatusError] = useState('');
+  const [statusSuccess, setStatusSuccess] = useState('');
   const statusRequests = useRef(new Set<string>());
 
   const tableRef = useRef<HTMLTableSectionElement>(null);
@@ -86,9 +87,11 @@ export const Users: React.FC = () => {
     statusRequests.current.add(userId);
     setSuspendingIds((current) => new Set(current).add(userId));
     setStatusError('');
+    setStatusSuccess('');
     try {
       const result = await suspendCustomer(userId, newStatus);
-      setUsers((current) => current.map((user) => user._id === userId ? result.user : user));
+      setUsers((current) => current.map((user) => user._id === userId ? { ...user, ...result.user } : user));
+      setStatusSuccess(newStatus ? 'Customer account unsuspended.' : 'Customer account suspended.');
     } catch (e: unknown) {
       if (e instanceof ApiError) {
         const messages: Record<number, string> = {
@@ -174,6 +177,12 @@ export const Users: React.FC = () => {
       {statusError && (
         <div role="alert" style={{ background: 'rgba(239, 68, 68, 0.1)', border: '1px solid var(--danger)', color: 'var(--danger)', padding: '0.85rem 1rem', borderRadius: 12 }}>
           {statusError}
+        </div>
+      )}
+
+      {statusSuccess && (
+        <div role="status" style={{ background: 'rgba(22, 101, 52, 0.1)', border: '1px solid #166534', color: '#166534', padding: '0.85rem 1rem', borderRadius: 12 }}>
+          {statusSuccess}
         </div>
       )}
 
@@ -402,7 +411,7 @@ export const Users: React.FC = () => {
                               cursor: 'pointer',
                             }}
                           >
-                            {suspendingIds.has(user._id) ? 'Working...' : (user.isActive === false ? 'Reactivate' : 'Suspend')}
+                            {suspendingIds.has(user._id) ? 'Working...' : (user.isActive === false ? 'Unsuspend' : 'Suspend')}
                           </button>
                         </td>
                       </tr>

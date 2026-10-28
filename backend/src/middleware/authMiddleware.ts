@@ -34,9 +34,18 @@ export const authenticate: RequestHandler = async (req, res, next) => {
     };
 
     // Enforce account suspension: suspended users denied protected access
-    const user = await User.findById(payload.sub).select("isActive").lean();
-    if (!user || user.isActive === false) {
-      return res.status(403).json({ message: "Account suspended.", code: "ACCOUNT_SUSPENDED" });
+    const user = await User.findById(payload.sub).select("isActive role").lean();
+    if (!user) {
+      return res.status(401).json({ message: "The account for this session no longer exists." });
+    }
+    if (user.role !== payload.role) {
+      return res.status(403).json({ message: "This session no longer has the required account role." });
+    }
+    if (user.role === "customer" && user.isActive === false) {
+      return res.status(403).json({
+        message: "Your account has been suspended. Please contact support.",
+        code: "ACCOUNT_SUSPENDED"
+      });
     }
 
     return next();
