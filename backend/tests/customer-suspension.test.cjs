@@ -21,9 +21,11 @@ process.env.JWT_SECRET = "local-suspension-test-secret-with-at-least-32-bytes";
 
 const User = require("../dist/models/User").default;
 const adminRoutes = require("../dist/routes/adminRoutes").default;
+const authRoutes = require("../dist/routes/authRoutes").default;
 const { attachRequestId } = require("../dist/middleware/requestId");
 let server;
 let baseUrl;
+let authBaseUrl;
 let admin;
 let customer;
 let adminToken;
@@ -54,9 +56,11 @@ before(async () => {
   app.use(express.json());
   app.use(attachRequestId);
   app.use("/api/admin", adminRoutes);
+  app.use("/api/auth", authRoutes);
   server = app.listen(0, "127.0.0.1");
   await new Promise((resolve) => server.once("listening", resolve));
   baseUrl = `http://127.0.0.1:${server.address().port}/api/admin/customers/${customer._id}/status`;
+  authBaseUrl = `http://127.0.0.1:${server.address().port}/api/auth`;
 });
 
 after(async () => {
@@ -66,6 +70,15 @@ after(async () => {
 });
 
 test("admin can suspend and reactivate a customer, with each state persisted", async () => {
+  const createdAtBefore = (await User.findById(customer._id)).createdAt.getTime();
+  const activeLogin = await fetch(`${authBaseUrl}/login`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email: customer.email, password: "test-customer-password" })
+  });
+  assert.equal(activeLogin.status, 200);
+  const activeSession = await activeLogin.json();
+
   const oldSaveCandidate = await User.findById(customer._id);
   assert.equal(oldSaveCandidate.passwordHash, undefined);
   await assert.rejects(() => oldSaveCandidate.save(), (error) => error.name === "ValidationError");
@@ -79,8 +92,32 @@ test("admin can suspend and reactivate a customer, with each state persisted", a
   const suspendedPayload = await suspendedResponse.json();
   assert.equal(suspendedPayload.user._id, String(customer._id));
   assert.equal(suspendedPayload.user.isActive, false);
+  assert.equal(suspendedPayload.user.authProvider, "local");
+  assert.equal(new Date(suspendedPayload.user.createdAt).getTime(), createdAtBefore);
   assert.ok(suspendedResponse.headers.get("x-request-id"));
   assert.equal((await User.findById(customer._id).select("isActive").lean()).isActive, false);
+
+  const protectedRequest = await fetch(`${authBaseUrl}/me`, {
+    headers: { Authorization: `Bearer ${activeSession.token}` }
+  });
+  assert.equal(protectedRequest.status, 403);
+  assert.equal((await protectedRequest.json()).code, "ACCOUNT_SUSPENDED");
+
+  const suspendedLogin = await fetch(`${authBaseUrl}/login`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email: customer.email, password: "test-customer-password" })
+  });
+  assert.equal(suspendedLogin.status, 403);
+  assert.equal((await suspendedLogin.json()).code, "ACCOUNT_SUSPENDED");
+
+  const wrongPassword = await fetch(`${authBaseUrl}/login`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email: customer.email, password: "wrong-password-value" })
+  });
+  assert.equal(wrongPassword.status, 401);
+  assert.equal((await wrongPassword.json()).code, undefined);
 
   const reactivatedResponse = await fetch(baseUrl, {
     method: "PUT",
@@ -89,9 +126,22 @@ test("admin can suspend and reactivate a customer, with each state persisted", a
   });
   assert.equal(reactivatedResponse.status, 200);
   assert.equal((await User.findById(customer._id).select("isActive").lean()).isActive, true);
+  assert.equal((await User.findById(customer._id)).createdAt.getTime(), createdAtBefore);
+
+  const reactivatedLogin = await fetch(`${authBaseUrl}/login`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email: customer.email, password: "test-customer-password" })
+  });
+  assert.equal(reactivatedLogin.status, 200);
 });
 
 test("missing authentication and non-admin accounts cannot change status", async () => {
+  const adminProfile = await fetch(`${authBaseUrl}/me`, {
+    headers: { Authorization: `Bearer ${adminToken}` }
+  });
+  assert.equal(adminProfile.status, 200);
+
   const missingAuth = await fetch(baseUrl, {
     method: "PUT",
     headers: { "Content-Type": "application/json" },

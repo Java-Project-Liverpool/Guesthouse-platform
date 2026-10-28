@@ -301,7 +301,7 @@ router.put("/customers/:id/status", authenticate, requireAdmin, async (req: Requ
       { _id: req.params.id, role: "customer" },
       { $set: { isActive } },
       { returnDocument: "after", runValidators: true }
-    ).select("_id name email role isActive");
+    ).select("_id name email role authProvider isActive createdAt updatedAt");
     if (!user) {
       return res.status(404).json({ message: "Customer not found." });
     }
