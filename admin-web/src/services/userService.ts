@@ -1,11 +1,24 @@
-import { apiFetch } from './api';
+import { ApiError, apiFetch } from './api';
 import type { User } from '../types';
 
 export async function suspendCustomer(id: string, isActive: boolean): Promise<{ message: string; user: User }> {
-  return apiFetch<{ message: string; user: User }>(`/admin/customers/${id}/status`, {
+  const result = await apiFetch<unknown>(`/admin/customers/${id}/status`, {
     method: 'PUT',
     body: JSON.stringify({ isActive }),
   });
+
+  if (
+    typeof result !== 'object' || result === null ||
+    !('message' in result) || typeof result.message !== 'string' ||
+    !('user' in result) || typeof result.user !== 'object' || result.user === null ||
+    !('_id' in result.user) || typeof result.user._id !== 'string' ||
+    !('isActive' in result.user) || typeof result.user.isActive !== 'boolean' ||
+    result.user.isActive !== isActive
+  ) {
+    throw new ApiError('The server returned an unexpected customer status response.', 502);
+  }
+
+  return result as { message: string; user: User };
 }
 
 export async function createAdminUser(data: {
