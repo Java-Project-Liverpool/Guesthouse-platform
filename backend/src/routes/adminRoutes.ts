@@ -295,19 +295,29 @@ router.put("/customers/:id/status", authenticate, requireAdmin, async (req: Requ
   }
 
   try {
-    const user = await User.findOne({ _id: req.params.id, role: "customer" });
+    // Update only the requested status field; saving a partially selected User
+    // would rerun local-account validation without its deliberately hidden hash.
+    const user = await User.findOneAndUpdate(
+      { _id: req.params.id, role: "customer" },
+      { $set: { isActive } },
+      { returnDocument: "after", runValidators: true }
+    ).select("_id name email role isActive");
     if (!user) {
       return res.status(404).json({ message: "Customer not found." });
     }
 
-    user.isActive = isActive;
-    await user.save();
-
-    return res.json({ message: isActive ? "Account reactivated." : "Account suspended.", user: { id: user._id, name: user.name, email: user.email, isActive: user.isActive, role: user.role } });
+    return res.json({ message: isActive ? "Account reactivated." : "Account suspended.", user });
   } catch (error) {
-    const safeMsg = error instanceof Error ? error.message : "Unknown error";
-    console.error("[SUSPEND] Customer status update failed for id:", req.params.id, "| error:", safeMsg.substring(0, 120));
-    return res.status(500).json({ message: "Could not update customer status.", detail: "Server error during persistence." });
+    console.error("admin.customer_status_update_failed", {
+      operation: "customer_status_update",
+      status: 500,
+      requestId: res.locals.requestId,
+      errorType: error instanceof Error ? error.name : "UnknownError"
+    });
+    return res.status(500).json({
+      message: "Could not update customer status.",
+      requestId: res.locals.requestId
+    });
   }
 });
 

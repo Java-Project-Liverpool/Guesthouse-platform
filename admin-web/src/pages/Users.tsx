@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { gsap } from 'gsap';
 import { SearchIcon, AppUsersIcon } from '../components/ui/Icons';
+import { ApiError } from '../services/api';
 import { getCustomerUsers, suspendCustomer } from '../services/userService';
 import type { User } from '../types';
 
@@ -11,7 +12,9 @@ export const Users: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [providerFilter, setProviderFilter] = useState<'all' | 'local' | 'google'>('all');
   const [refreshTrigger, setRefreshTrigger] = useState(0);
-  const [suspendingId, setSuspendingId] = useState<string | null>(null);
+  const [suspendingIds, setSuspendingIds] = useState<Set<string>>(() => new Set());
+  const [statusError, setStatusError] = useState('');
+  const statusRequests = useRef(new Set<string>());
 
   const tableRef = useRef<HTMLTableSectionElement>(null);
 
@@ -77,16 +80,37 @@ export const Users: React.FC = () => {
   });
 
   const handleStatusChange = async (userId: string, currentStatus: boolean | undefined) => {
+    if (statusRequests.current.has(userId)) return;
     const newStatus = !(currentStatus === false); // if false -> reactivate (true); else suspend (false)
     if (newStatus === false && !window.confirm('Suspend this account? The user will be denied access.')) return;
-    setSuspendingId(userId);
+    statusRequests.current.add(userId);
+    setSuspendingIds((current) => new Set(current).add(userId));
+    setStatusError('');
     try {
-      await suspendCustomer(userId, newStatus);
-      setRefreshTrigger((p) => p + 1);
+      const result = await suspendCustomer(userId, newStatus);
+      setUsers((current) => current.map((user) => user._id === userId ? result.user : user));
     } catch (e: unknown) {
-      alert(e instanceof Error ? e.message : 'Failed to update status.');
+      if (e instanceof ApiError) {
+        const messages: Record<number, string> = {
+          400: 'The status request was not accepted. Refresh the customer list and try again.',
+          401: 'Your admin session has expired. Sign in again to update this account.',
+          403: 'Your account is not permitted to change customer status.',
+          404: 'This customer account could not be found. Refresh the list and try again.',
+          500: 'The server could not save this change. Please try again later.',
+          502: 'The server response was incomplete. Refresh the customer list before trying again.',
+        };
+        const baseMessage = messages[e.status] || 'Could not update customer status.';
+        setStatusError(e.requestId ? `${baseMessage} Reference: ${e.requestId}` : baseMessage);
+      } else {
+        setStatusError('Could not reach the server. Check your connection and try again.');
+      }
     } finally {
-      setSuspendingId(null);
+      statusRequests.current.delete(userId);
+      setSuspendingIds((current) => {
+        const next = new Set(current);
+        next.delete(userId);
+        return next;
+      });
     }
   };
 
@@ -144,6 +168,12 @@ export const Users: React.FC = () => {
           >
             Retry
           </button>
+        </div>
+      )}
+
+      {statusError && (
+        <div role="alert" style={{ background: 'rgba(239, 68, 68, 0.1)', border: '1px solid var(--danger)', color: 'var(--danger)', padding: '0.85rem 1rem', borderRadius: 12 }}>
+          {statusError}
         </div>
       )}
 
@@ -360,7 +390,7 @@ export const Users: React.FC = () => {
                           <button
                             type="button"
                             onClick={() => handleStatusChange(user._id, user.isActive)}
-                            disabled={suspendingId === user._id}
+                            disabled={suspendingIds.has(user._id)}
                             style={{
                               padding: '0.35rem 0.7rem',
                               borderRadius: 8,
@@ -372,7 +402,7 @@ export const Users: React.FC = () => {
                               cursor: 'pointer',
                             }}
                           >
-                            {suspendingId === user._id ? 'Working...' : (user.isActive === false ? 'Reactivate' : 'Suspend')}
+                            {suspendingIds.has(user._id) ? 'Working...' : (user.isActive === false ? 'Reactivate' : 'Suspend')}
                           </button>
                         </td>
                       </tr>

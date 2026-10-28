@@ -12,6 +12,7 @@ import favouriteCollectionRoutes from "./routes/favouriteCollectionRoutes";
 import comparisonRoutes from "./routes/comparisonRoutes";
 import searchHistoryRoutes from "./routes/searchHistoryRoutes";
 import reportRoutes from "./routes/reportRoutes";
+import { attachRequestId } from "./middleware/requestId";
 
 
 dotenv.config();
@@ -28,6 +29,7 @@ app.use(cors({
     callback(null, !origin || allowedOrigins.includes(origin));
   }
 }));
+app.use(attachRequestId);
 app.use(express.json());
 // Keep admin account management under the JWT and admin-role guards in its router.
 app.use("/api/admin", adminRoutes);

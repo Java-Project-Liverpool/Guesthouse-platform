@@ -1,6 +1,18 @@
 const RAW_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
 const BASE_URL = RAW_BASE_URL.replace(/\/+$/, '');
 
+export class ApiError extends Error {
+  readonly status: number;
+  readonly requestId?: string;
+
+  constructor(message: string, status: number, requestId?: string) {
+    super(message);
+    this.name = 'ApiError';
+    this.status = status;
+    this.requestId = requestId;
+  }
+}
+
 export async function apiFetch<T = unknown>(path: string, options?: RequestInit): Promise<T> {
   const token = localStorage.getItem('token');
   const normalizedPath = path.startsWith('/api')
@@ -21,14 +33,23 @@ export async function apiFetch<T = unknown>(path: string, options?: RequestInit)
       headers,
     });
 
-    const data = await res.json().catch(() => ({}));
+    const data: unknown = await res.json().catch(() => ({}));
 
     if (!res.ok) {
       if (res.status === 401 && !path.includes('/auth/login')) {
         localStorage.removeItem('token');
         localStorage.removeItem('user');
       }
-      throw new Error(data.message || `Request failed with status ${res.status}`);
+      const payload = typeof data === 'object' && data !== null
+        ? data as { message?: unknown; requestId?: unknown }
+        : {};
+      const message = typeof payload.message === 'string'
+        ? payload.message
+        : `Request failed with status ${res.status}`;
+      const requestId = typeof payload.requestId === 'string'
+        ? payload.requestId
+        : res.headers.get('X-Request-Id') || undefined;
+      throw new ApiError(message, res.status, requestId);
     }
 
     return data as T;
