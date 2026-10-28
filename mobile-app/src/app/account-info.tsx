@@ -21,6 +21,24 @@ export default function AccountInfoScreen() {
   const { user, restoring } = useAuth();
   const [busy, setBusy] = useState(false);
 
+  const refreshAccount = async () => {
+    setBusy(true);
+    try {
+      const sessionStr = await import('expo-secure-store').then(m => m.getItemAsync('dumela-auth-session'));
+      if (sessionStr) {
+        const parsed = JSON.parse(sessionStr);
+        if (parsed?.token) {
+          const { apiRequest } = await import('@/data/api');
+          await apiRequest<{ user: { id?: string; name: string; email: string; role: string } }>(`/api/auth/me`, { token: parsed.token });
+        }
+      }
+    } catch {
+      // silent
+    } finally {
+      setTimeout(() => setBusy(false), 800);
+    }
+  };
+
   if (restoring) return <SafeAreaView style={styles.screen}><ActivityIndicator size="large" color={colors.dark} /></SafeAreaView>;
   if (!user) return null;
 
@@ -47,7 +65,7 @@ export default function AccountInfoScreen() {
           <Text style={styles.fieldValue}>{user.id}</Text>
         </View>
 
-        <Pressable style={[styles.refreshButton, busy && styles.refreshButtonDisabled]} onPress={() => { setBusy(true); setTimeout(() => setBusy(false), 800); }} disabled={busy}>
+        <Pressable style={[styles.refreshButton, busy && styles.refreshButtonDisabled]} onPress={refreshAccount} disabled={busy}>
           {busy ? <ActivityIndicator color={colors.dark} size={20} style={{ marginRight: 8 }} /> : <Text>Refresh</Text>}
         </Pressable>
       </ScrollView>
