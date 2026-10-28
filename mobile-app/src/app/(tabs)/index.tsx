@@ -110,8 +110,8 @@ export default function HomeScreen() {
           ) : (
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.carousel}>
               {featured.map((stay) => (
-                <Pressable key={stay._id} onPress={() => router.push(`/details?id=${stay._id}`)} style={styles.card}>
-                  <StayImage url={stay.photos?.[0]} style={styles.cardImage} />
+                <Pressable key={stay.id} onPress={() => router.push(`/details?id=${stay.id}`)} style={styles.card}>
+                  <StayImage uri={stay.image} style={styles.cardImage} />
                   <View style={styles.cardBody}>
                     <Text numberOfLines={1} style={styles.cardName}>{stay.name}</Text>
                     <Text style={styles.cardLocation}>{stay.city}</Text>

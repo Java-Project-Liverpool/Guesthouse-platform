@@ -1,10 +1,12 @@
+import React, { useEffect, useState } from 'react';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useState } from 'react';
 
-import { logout as doLogout, useAuth } from '@/data/auth';
+import { useAuth } from '@/data/auth';
+import { logout as doLogout } from '@/data/auth';
+import { loadTheme, saveTheme, loadNotifications, saveNotifications } from '../data/settings';
 
 type RowProps = { label: string; icon: string; onPress?: () => void; value?: string; last?: boolean };
 
@@ -37,10 +39,23 @@ const colors = {
 export default function SettingsScreen() {
   const router = useRouter();
   const { user } = useAuth();
+  const [darkTheme, setDarkTheme] = useState(false);
   const [guesthouseUpdates, setGuesthouseUpdates] = useState(true);
   const [reviewsActivity, setReviewsActivity] = useState(true);
   const [promotions, setPromotions] = useState(false);
-  const [darkTheme, setDarkTheme] = useState(false);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const theme = await loadTheme();
+        setDarkTheme(theme === 'dark');
+        const n = await loadNotifications();
+        setGuesthouseUpdates(n.updates);
+        setReviewsActivity(n.reviews);
+        setPromotions(n.promotions);
+      } catch { /* silent */ }
+    })();
+  }, []);
 
   const logout = () => {
     void doLogout();
@@ -67,15 +82,15 @@ export default function SettingsScreen() {
 
         <SectionTitle title="Notifications" />
         <View style={styles.card}>
-          <Row label="Guesthouse updates" icon="notifications-outline" onPress={() => setGuesthouseUpdates(v => !v)} />
-          <Row label="Review or comment activity" icon="chatbubble-outline" onPress={() => setReviewsActivity(v => !v)} />
-          <Row label="Promotional updates" icon="megaphone-outline" onPress={() => setPromotions(v => !v)} />
+          <Row label="Guesthouse updates" icon="notifications-outline" onPress={() => { setGuesthouseUpdates(v => { saveNotifications({ updates: !v, reviews: reviewsActivity, promotions: promotions }); return !v; }); }} />
+          <Row label="Review or comment activity" icon="chatbubble-outline" onPress={() => { setReviewsActivity(v => { saveNotifications({ updates: guesthouseUpdates, reviews: !v, promotions: promotions }); return !v; }); }} />
+          <Row label="Promotional updates" icon="megaphone-outline" onPress={() => { setPromotions(v => { saveNotifications({ updates: guesthouseUpdates, reviews: reviewsActivity, promotions: !v }); return !v; }); }} />
         </View>
 
         <SectionTitle title="Appearance" />
         <View style={styles.card}>
-          <Row label="Light theme" icon="sunny-outline" />
-          <Row label="Dark theme" icon="moon-outline" onPress={() => setDarkTheme(v => !v)} />
+          <Row label="Light theme" icon="sunny-outline" onPress={() => { setDarkTheme(false); saveTheme('light'); }} />
+          <Row label="Dark theme" icon="moon-outline" onPress={() => { const next = !darkTheme; setDarkTheme(next); saveTheme(next ? 'dark' : 'light'); }} />
         </View>
 
         <SectionTitle title="Privacy & Security" />
@@ -98,7 +113,7 @@ export default function SettingsScreen() {
         </View>
 
         {user && (
-          <Pressable style={[styles.logoutButton, { marginTop: 8 }]} onPress={() => { /* confirmation handled elsewhere or simple */ logout(); }}>
+          <Pressable style={[styles.logoutButton, { marginTop: 8 }]} onPress={() => { if (window.confirm ? window.confirm('Are you sure you want to log out?') : true) { doLogout(); router.replace('/'); } }}>
             <Text style={styles.logoutText}>Log out</Text>
           </Pressable>
         )}
