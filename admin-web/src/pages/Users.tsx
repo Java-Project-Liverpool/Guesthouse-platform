@@ -90,8 +90,16 @@ export const Users: React.FC = () => {
     setStatusSuccess('');
     try {
       const result = await suspendCustomer(userId, newStatus);
+      if (result.user._id !== userId) {
+        throw new ApiError('The server returned a different customer record.', 502);
+      }
+      const confirmedIsActive = result.user.isActive === true;
       setUsers((current) => current.map((user) => user._id === userId ? { ...user, ...result.user } : user));
-      setStatusSuccess(newStatus ? 'Customer account unsuspended.' : 'Customer account suspended.');
+      setStatusSuccess(
+        confirmedIsActive
+          ? 'Customer account unsuspended successfully.'
+          : 'Customer account suspended successfully.'
+      );
     } catch (e: unknown) {
       if (e instanceof ApiError) {
         const messages: Record<number, string> = {
