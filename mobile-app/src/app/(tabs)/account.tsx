@@ -219,9 +219,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   logoutText: { fontSize: 16, fontWeight: '700', color: colors.dark },
-
-  danger: '#B3261E',
-  success: '#2E7D32',
   modalBackdrop: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', alignItems: 'center', justifyContent: 'center', padding: 24 },
   modal: { backgroundColor: colors.card, borderRadius: 20, padding: 24, width: '100%', maxWidth: 360 },
   modalHeader: { marginBottom: 12 },
