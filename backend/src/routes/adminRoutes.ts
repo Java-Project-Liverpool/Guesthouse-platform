@@ -305,8 +305,9 @@ router.put("/customers/:id/status", authenticate, requireAdmin, async (req: Requ
 
     return res.json({ message: isActive ? "Account reactivated." : "Account suspended.", user: { id: user._id, name: user.name, email: user.email, isActive: user.isActive, role: user.role } });
   } catch (error) {
-    console.error("Customer status update failed.", error);
-    return res.status(500).json({ message: "Could not update customer status." });
+    const safeMsg = error instanceof Error ? error.message : "Unknown error";
+    console.error("[SUSPEND] Customer status update failed for id:", req.params.id, "| error:", safeMsg.substring(0, 120));
+    return res.status(500).json({ message: "Could not update customer status.", detail: "Server error during persistence." });
   }
 });
 
