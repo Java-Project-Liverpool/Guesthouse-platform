@@ -6,6 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { logout, useAuth } from '@/data/auth';
 import { useFavourites } from '@/data/favourites';
+import { useTabBarPadding } from '@/hooks/use-tab-bar-padding';
 
 const colors = {
   background: '#F7F5F0',
@@ -39,6 +40,7 @@ function Row({ label, value, onPress, last }: RowProps) {
 
 export default function AccountScreen() {
   const router = useRouter();
+  const tabBarPadding = useTabBarPadding();
   const { user, restoring } = useAuth();
   const { saved } = useFavourites();
   const [confirmLogout, setConfirmLogout] = useState(false);
@@ -55,7 +57,7 @@ export default function AccountScreen() {
   if (!user) {
     return (
       <SafeAreaView style={styles.screen}>
-        <ScrollView contentContainerStyle={styles.content}>
+        <ScrollView contentContainerStyle={[styles.content, { paddingBottom: tabBarPadding }]}>
           <Text style={styles.title}>Account</Text>
 
           <View style={[styles.card, styles.guestCard]}>
@@ -87,7 +89,7 @@ export default function AccountScreen() {
 
   return (
     <SafeAreaView style={styles.screen}>
-      <ScrollView contentContainerStyle={styles.content}>
+      <ScrollView contentContainerStyle={[styles.content, { paddingBottom: tabBarPadding }]}>
         <Text style={styles.title}>Account</Text>
 
         {/* Profile */}

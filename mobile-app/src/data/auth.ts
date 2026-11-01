@@ -6,7 +6,17 @@ import { ApiError, apiRequest, setAccountSuspensionHandler } from '@/data/api';
 
 export type User = { id: string; name: string; email: string; role: string };
 type Session = { user: User; token: string } | null;
-type AuthResponse = { token: string; user: { id?: string; _id?: string; name: string; email: string; role: string } };
+type AuthResponse = {
+  token: string;
+  user: {
+    id?: string;
+    _id?: string;
+    name: string;
+    email: string;
+    role: string;
+    authProvider?: 'local' | 'google';
+  };
+};
 
 const storageKey = 'dumela-auth-session';
 let session: Session = null;

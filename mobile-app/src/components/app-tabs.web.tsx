@@ -46,8 +46,9 @@ export default function AppTabs() {
 }
 
 export function TabButton({ children, isFocused, ...props }: TabTriggerSlotProps) {
+  const { ref: _ref, ...pressableProps } = props as any;
   return (
-    <Pressable {...props} style={({ pressed }) => pressed && styles.pressed}>
+    <Pressable {...pressableProps} style={({ pressed }) => pressed && styles.pressed}>
       <View style={[styles.tabButtonView, isFocused && styles.tabButtonActive]}>
         <Text style={[styles.tabText, isFocused && styles.tabTextActive]}>{children}</Text>
       </View>

@@ -1,7 +1,8 @@
 import { DarkTheme, DefaultTheme, Stack, ThemeProvider, usePathname, useRouter } from 'expo-router';
+import { NavigationBar } from 'expo-navigation-bar';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
-import { AppState, useColorScheme } from 'react-native';
+import { AppState, Platform, useColorScheme } from 'react-native';
 
 import { AnimatedSplashOverlay } from '@/components/animated-icon';
 import { restoreSession, useAuth, validateSession } from '@/data/auth';
@@ -17,6 +18,15 @@ export default function TabLayout() {
   const userRole = user?.role;
   useEffect(() => {
     void restoreSession();
+  }, []);
+  useEffect(() => {
+    if (Platform.OS !== 'android') return;
+    const hideNavigationBar = () => NavigationBar.setHidden(true);
+    hideNavigationBar();
+    const subscription = AppState.addEventListener('change', (state) => {
+      if (state === 'active') hideNavigationBar();
+    });
+    return () => subscription.remove();
   }, []);
   useEffect(() => {
     if (accountSuspended && pathname !== '/account-disabled') {

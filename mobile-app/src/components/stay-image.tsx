@@ -9,12 +9,12 @@ export default function StayImage({
   style,
 }: {
   uri?: string;
-  color: string;
+  color?: string;
   style: object;
 }) {
   const [failed, setFailed] = useState(false);
   return (
-    <View style={[styles.fallback, style, { backgroundColor: color }]}>
+    <View style={[styles.fallback, style, { backgroundColor: color ?? '#E1E9E3' }]}>
       {uri && !failed ? (
         <Image
           source={{ uri }}

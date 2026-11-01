@@ -2,26 +2,32 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 import GuesthouseCard from '@/components/guesthouse-card';
 import { Colors, Radii, Typography } from '@/constants/theme';
+import { toggleCompareStay, useComparison } from '@/data/comparison';
 import { useAuth } from '@/data/auth';
 import { useFavourites } from '@/data/favourites';
+import type { Stay } from '@/data/stays';
+import { useTabBarPadding } from '@/hooks/use-tab-bar-padding';
 
 export default function FavouritesScreen() {
   const router = useRouter();
-  const insets = useSafeAreaInsets();
+  const tabBarPadding = useTabBarPadding();
   const { user, restoring } = useAuth();
-  const { saved, favourites, loading, error, retry, toggleSaved } = useFavourites();
+  const { favourites, loading, error, retry, toggleSaved } = useFavourites();
+  const { stays: compareStays, has: isCompared } = useComparison();
   const [actionError, setActionError] = useState('');
 
-  const compare = () => {
-    if (saved.length < 2) {
-      setActionError('Save at least two stays to compare them.');
+  const openComparison = () => router.push('/compare');
+
+  const toggleCompare = (stay: Stay) => {
+    if (toggleCompareStay(stay) === 'full') {
+      setActionError('You can compare up to 3 stays. Remove one from the comparison first.');
       return;
     }
-    router.push({ pathname: '/compare', params: { a: saved[0], b: saved[1] } });
+    setActionError('');
   };
 
   const removeFavourite = async (id: string) => {
@@ -37,7 +43,7 @@ export default function FavouritesScreen() {
     <SafeAreaView edges={['top', 'left', 'right']} style={styles.screen}>
       <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + 28 }]}>
+        contentContainerStyle={[styles.content, { paddingBottom: tabBarPadding }]}>
         <View style={styles.topBar}>
           <Pressable onPress={() => router.back()} accessibilityRole="button" accessibilityLabel="Go back" style={styles.backButton}>
             <Ionicons name="chevron-back" size={21} color={Colors.light.primary} />
@@ -51,10 +57,10 @@ export default function FavouritesScreen() {
             <Text style={styles.title}>Favourites</Text>
             <Text style={styles.subtitle}>The guesthouses you want to remember.</Text>
           </View>
-          {favourites.length > 1 ? (
-            <Pressable onPress={compare} accessibilityRole="button" style={styles.compareButton}>
+          {favourites.length > 0 ? (
+            <Pressable onPress={openComparison} accessibilityRole="button" style={styles.compareButton}>
               <Ionicons name="git-compare-outline" size={17} color={Colors.light.primary} />
-              <Text style={styles.compareText}>Compare</Text>
+              <Text style={styles.compareText}>{compareStays.length > 0 ? `Compare (${compareStays.length})` : 'Compare'}</Text>
             </Pressable>
           ) : null}
         </View>
@@ -98,6 +104,8 @@ export default function FavouritesScreen() {
             key={stay.id}
             stay={stay}
             saved
+            compared={isCompared(stay.id)}
+            onToggleCompare={() => toggleCompare(stay)}
             onPress={() => router.push({ pathname: '/details', params: { id: stay.id } })}
             onToggleSaved={() => void removeFavourite(stay.id)}
           />

@@ -4,8 +4,7 @@ import { useRouter } from 'expo-router';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { useAuth } from '@/data/auth';
-import { logout as doLogout } from '@/data/auth';
+import { useAuth , logout as doLogout } from '@/data/auth';
 import { loadTheme, saveTheme, loadNotifications, saveNotifications } from '../data/settings';
 
 type RowProps = { label: string; icon: string; onPress?: () => void; value?: string; last?: boolean };
