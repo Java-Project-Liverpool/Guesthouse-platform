@@ -408,7 +408,7 @@ export const Users: React.FC = () => {
                               color: 'var(--text-muted)',
                             }}
                           >
-                            {user.authProvider || 'local'}
+                            {(user.authProvider || 'local').toUpperCase()}
                           </span>
                         </td>
                         <td style={{ padding: '1rem 0', color: 'var(--text-muted)' }}>

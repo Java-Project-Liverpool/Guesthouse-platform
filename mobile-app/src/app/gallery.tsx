@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Pressable,
@@ -29,7 +29,7 @@ export default function GalleryScreen() {
   const router = useRouter();
   const { width } = useWindowDimensions();
   const { id } = useLocalSearchParams<{ id?: string }>();
-  const pager = useRef<ScrollView>(null);
+  const pager = useRef<React.ElementRef<typeof ScrollView>>(null);
   const [index, setIndex] = useState(0);
   const [stay, setStay] = useState<Stay | null>(null);
   const [loading, setLoading] = useState(true);

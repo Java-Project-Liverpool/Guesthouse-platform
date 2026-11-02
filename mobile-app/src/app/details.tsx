@@ -1,11 +1,12 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import LoginPrompt from '@/components/login-prompt';
 import StayImage from '@/components/stay-image';
+import { MAX_COMPARE_STAYS, toggleCompareStay, useComparison } from '@/data/comparison';
 import { useAuth } from '@/data/auth';
 import { useFavourites } from '@/data/favourites';
 import { getStay, getStayReviews, type GuesthouseReview, type Stay } from '@/data/stays';
@@ -19,6 +20,7 @@ export default function DetailsScreen() {
   const { id } = useLocalSearchParams<{ id?: string }>();
   const { user } = useAuth();
   const { saved, toggleSaved } = useFavourites();
+  const { stays: compareStays, has: isCompared } = useComparison();
   const [stay, setStay] = useState<Stay | null>(null);
   const [reviews, setReviews] = useState<GuesthouseReview[]>([]);
   const [reviewError, setReviewError] = useState(false);
@@ -62,6 +64,13 @@ export default function DetailsScreen() {
     catch (reason) { setActionError(reason instanceof Error ? reason.message : 'Could not update favourites.'); }
   };
 
+  const compareThisStay = () => {
+    if (!stay) return;
+    if (toggleCompareStay(stay) === 'full') {
+      Alert.alert('Comparison is full', `You can compare up to ${MAX_COMPARE_STAYS} stays. Remove one from the comparison first.`);
+    }
+  };
+
   if (loading) return <SafeAreaView style={styles.center}><ActivityIndicator size="large" color={colors.dark} /><Text style={styles.hint}>Waking the guesthouse service if it has been idle…</Text></SafeAreaView>;
   if (error || !stay || !id) return (
     <SafeAreaView style={styles.center}>
@@ -94,6 +103,21 @@ export default function DetailsScreen() {
             {average !== undefined && <View style={styles.inline}><Ionicons name="star" size={17} color={colors.star} /><Text style={styles.fact}>{average.toFixed(1)}{reviews.length ? ` · ${reviews.length} reviews` : stay.ratings ? ` · ${stay.ratings} reviews` : ''}</Text></View>}
             {stay.price !== undefined && <Text style={styles.price}>{money(stay.price)} <Text style={styles.muted}>/ night</Text></Text>}
           </View>}
+          <Pressable
+            onPress={compareThisStay}
+            accessibilityRole="button"
+            accessibilityState={{ selected: isCompared(stay.id) }}
+            style={({ pressed }) => [styles.compareAction, isCompared(stay.id) && styles.compareActionActive, pressed && { opacity: 0.85 }]}>
+            <Ionicons name={isCompared(stay.id) ? 'checkmark-circle' : 'git-compare-outline'} size={19} color={isCompared(stay.id) ? '#FFFFFF' : colors.dark} />
+            <Text style={[styles.compareActionText, isCompared(stay.id) && styles.compareActionTextActive]}>
+              {isCompared(stay.id) ? 'Added to comparison' : 'Add to comparison'}
+            </Text>
+          </Pressable>
+          {compareStays.length > 0 ? (
+            <Pressable onPress={() => router.push('/compare')} accessibilityRole="button" style={styles.compareLink}>
+              <Text style={styles.link}>View comparison ({compareStays.length})</Text>
+            </Pressable>
+          ) : null}
           {stay.description ? <><Text style={styles.sectionTitle}>About this stay</Text><Text style={styles.body}>{stay.description}</Text></> : null}
           {stay.amenities.length > 0 && <><Text style={styles.sectionTitle}>Amenities</Text><View style={styles.amenities}>{stay.amenities.map((item) => <View key={item} style={styles.amenity}><Ionicons name="checkmark-circle-outline" size={17} color={colors.dark} /><Text style={styles.body}>{item}</Text></View>)}</View></>}
           {(stay.phone || stay.email) && <><Text style={styles.sectionTitle}>Contact</Text><View style={styles.contactCard}>
@@ -146,6 +170,11 @@ const styles = StyleSheet.create({
   link: { color: colors.dark, fontWeight: '800', marginTop: 8 },
   bookingNote: { borderTopWidth: 1, borderColor: colors.border, marginTop: 24, paddingTop: 16, color: colors.muted, lineHeight: 22 },
   error: { color: colors.error, marginTop: 12 },
+  compareAction: { marginTop: 16, height: 50, borderRadius: 14, borderWidth: 1, borderColor: colors.dark, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
+  compareActionActive: { backgroundColor: colors.dark },
+  compareActionText: { color: colors.dark, fontWeight: '700', fontSize: 15 },
+  compareActionTextActive: { color: '#FFFFFF' },
+  compareLink: { alignSelf: 'center', marginTop: 10, minHeight: 32, justifyContent: 'center' },
   primary: { backgroundColor: colors.dark, paddingHorizontal: 24, paddingVertical: 13, borderRadius: 14 },
   primaryText: { color: '#FFFFFF', fontWeight: '800' },
 });

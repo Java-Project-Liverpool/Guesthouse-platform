@@ -9,6 +9,8 @@ import { Platform } from 'react-native';
 
 export const Colors = {
   light: {
+    primary: '#14352A',
+    border: '#C8CEC8',
     text: '#000000',
     background: '#ffffff',
     backgroundElement: '#F0F0F3',
@@ -16,6 +18,8 @@ export const Colors = {
     textSecondary: '#60646C',
   },
   dark: {
+    primary: '#14352A',
+    border: '#2E3135',
     text: '#ffffff',
     background: '#000000',
     backgroundElement: '#212225',
@@ -54,6 +58,7 @@ export const Fonts = Platform.select({
 export const Radii = {
   card: 16,
   pill: 9999,
+  control: 12,
   sm: 8,
   md: 12,
 } as const;
@@ -69,6 +74,9 @@ export const Spacing = {
 } as const;
 
 export const Typography = {
+  screenTitle: { fontSize: 28, fontWeight: '700', lineHeight: 34 },
+  section: { fontSize: 20, fontWeight: '700', lineHeight: 26 },
+  body: { fontSize: 15, fontWeight: '400', lineHeight: 20 },
   cardTitle: { fontSize: 16, fontWeight: '600', lineHeight: 22 },
   supporting: { fontSize: 13, fontWeight: '400', lineHeight: 18 },
   metadata: { fontSize: 11, fontWeight: '400', lineHeight: 14 },

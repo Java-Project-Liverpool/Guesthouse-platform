@@ -10,6 +10,8 @@ type Props = {
   onPress: () => void;
   saved?: boolean;
   onToggleSaved?: () => void;
+  compared?: boolean;
+  onToggleCompare?: () => void;
   compact?: boolean;
 };
 
@@ -17,7 +19,15 @@ function formatPrice(value: number) {
   return `P${value.toLocaleString('en-US')}`;
 }
 
-export default function GuesthouseCard({ stay, onPress, saved = false, onToggleSaved, compact = false }: Props) {
+export default function GuesthouseCard({
+  stay,
+  onPress,
+  saved = false,
+  onToggleSaved,
+  compared = false,
+  onToggleCompare,
+  compact = false,
+}: Props) {
   return (
     <View style={[styles.card, compact && styles.compactCard]}>
       <Pressable
@@ -54,6 +64,18 @@ export default function GuesthouseCard({ stay, onPress, saved = false, onToggleS
           </View>
         </View>
       </Pressable>
+
+      {onToggleCompare ? (
+        <Pressable
+          onPress={onToggleCompare}
+          accessibilityRole="button"
+          accessibilityState={{ selected: compared }}
+          accessibilityLabel={`${compared ? 'Remove' : 'Add'} ${stay.name} ${compared ? 'from' : 'to'} comparison`}
+          style={({ pressed }) => [styles.compareChip, compared && styles.compareChipActive, pressed && styles.pressed]}>
+          <Ionicons name={compared ? 'checkmark' : 'git-compare-outline'} size={15} color={compared ? '#FFFFFF' : Colors.light.primary} />
+          <Text style={[styles.compareText, compared && styles.compareTextActive]}>{compared ? 'Added' : 'Compare'}</Text>
+        </Pressable>
+      ) : null}
 
       {onToggleSaved ? (
         <Pressable
@@ -103,5 +125,20 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     backgroundColor: '#FFFEFA',
   },
+  compareChip: {
+    position: 'absolute',
+    top: 12,
+    left: 12,
+    height: 36,
+    paddingHorizontal: 12,
+    borderRadius: Radii.pill,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#FFFEFA',
+  },
+  compareChipActive: { backgroundColor: Colors.light.primary },
+  compareText: { fontSize: 13, fontWeight: '600', color: Colors.light.primary },
+  compareTextActive: { color: '#FFFFFF' },
   pressed: { opacity: 0.82 },
 });

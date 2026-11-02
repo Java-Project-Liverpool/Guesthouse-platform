@@ -1,8 +1,8 @@
 import { Image } from 'expo-image';
 import * as SplashScreen from 'expo-splash-screen';
 import { useState } from 'react';
-import { Dimensions, StyleSheet, View } from 'react-native';
-import Animated, { Easing, Keyframe } from 'react-native-reanimated';
+import { Dimensions, StyleSheet, Text, View } from 'react-native';
+import Animated, { Easing, FadeIn, Keyframe } from 'react-native-reanimated';
 import { scheduleOnRN } from 'react-native-worklets';
 
 const INITIAL_SCALE_FACTOR = Dimensions.get('screen').height / 90;
@@ -33,7 +33,13 @@ export function AnimatedSplashOverlay() {
     },
   });
 
-  const image = <Image style={styles.image} source={require('@/assets/images/expo-logo.png')} />;
+  const image = (
+    <Animated.View entering={FadeIn.duration(450)} style={styles.brand}>
+      <Image style={styles.logo} source={require('@/assets/images/logo.png')} contentFit="contain" />
+      <Text style={styles.name}>Dumela Stays</Text>
+      <Text style={styles.tagline}>Find your next stay in Botswana.</Text>
+    </Animated.View>
+  );
 
   return animate ? (
     <Animated.View
@@ -86,25 +92,12 @@ const logoKeyframe = new Keyframe({
   },
 });
 
-const glowKeyframe = new Keyframe({
-  0: {
-    transform: [{ rotateZ: '0deg' }],
-  },
-  100: {
-    transform: [{ rotateZ: '7200deg' }],
-  },
-});
-
 export function AnimatedIcon() {
   return (
     <View style={styles.iconContainer}>
-      <Animated.View entering={glowKeyframe.duration(60 * 1000 * 4)} style={styles.glow}>
-        <Image style={styles.glow} source={require('@/assets/images/logo-glow.png')} />
-      </Animated.View>
-
       <Animated.View entering={keyframe.duration(DURATION)} style={styles.background} />
       <Animated.View style={styles.imageContainer} entering={logoKeyframe.duration(DURATION)}>
-        <Image style={styles.image} source={require('@/assets/images/expo-logo.png')} />
+        <Image style={styles.image} source={require('@/assets/images/logo.png')} contentFit="contain" />
       </Animated.View>
     </View>
   );
@@ -140,9 +133,13 @@ const styles = StyleSheet.create({
   },
   splashOverlay: {
     ...StyleSheet.absoluteFill,
-    backgroundColor: '#208AEF',
+    backgroundColor: '#F7F5F0',
     alignItems: 'center',
     justifyContent: 'center',
     zIndex: 1000,
   },
+  brand: { alignItems: 'center', paddingHorizontal: 32, gap: 6 },
+  logo: { width: 112, height: 112, marginBottom: 14 },
+  name: { fontSize: 26, fontWeight: '800', color: '#14352A', letterSpacing: -0.3 },
+  tagline: { fontSize: 15, color: '#5F6B64', textAlign: 'center' },
 });

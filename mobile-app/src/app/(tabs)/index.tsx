@@ -2,12 +2,13 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import {
-  ActivityIndicator, Image, Pressable, ScrollView, StyleSheet, Text, TextInput, View
+  ActivityIndicator, Image, Pressable, RefreshControl, ScrollView, StyleSheet, Text, TextInput, View
 } from 'react-native';
-import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 import StayImage from '@/components/stay-image';
 import { useStays } from '@/data/stays';
+import { useTabBarPadding } from '@/hooks/use-tab-bar-padding';
 
 const colors = {
   background: '#F7F5F0',
@@ -19,27 +20,40 @@ const colors = {
   chip: '#EEF1EC',
   star: '#B7650A',
   heart: '#C0392B',
+  cream: '#FAF7F2',
 };
 
 export default function HomeScreen() {
   const router = useRouter();
-  const insets = useSafeAreaInsets();
+  const tabBarPadding = useTabBarPadding();
   const { stays, loading, error, retry } = useStays();
   const [searchQuery, setSearchQuery] = useState('');
+  const [refreshing, setRefreshing] = useState(false);
+
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    try { retry(); } catch {}
+    setRefreshing(false);
+  };
 
   const featured = stays.slice(0, 4);
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
-      <ScrollView contentContainerStyle={{ paddingBottom: insets.bottom + 24 }}>
+      <ScrollView
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />}
+        contentContainerStyle={{ paddingBottom: tabBarPadding }}
+        showsVerticalScrollIndicator={false}>
         {/* Branding header */}
         <View style={styles.header}>
-          <View>
+          <View style={styles.brandRow}>
             <Image source={require('@/assets/images/logo.png')} style={{ width: 36, height: 36, resizeMode: 'contain' }} />
-            <Text style={styles.brand}>Dumela Stays</Text>
-            <Text style={styles.tagline}>Find your next stay.</Text>
+            <View>
+              <Text style={styles.brand}>Dumela Stays</Text>
+              <Text style={styles.tagline}>Find your next stay in Botswana.</Text>
+            </View>
           </View>
-          <Pressable onPress={() => router.push('/account')} style={styles.profileBtn}>
+          <Pressable onPress={() => router.push('/account')} style={styles.profileBtn} accessibilityRole="button" accessibilityLabel="Account">
             <Ionicons name="person-outline" size={22} color={colors.dark} />
           </Pressable>
         </View>
@@ -50,7 +64,7 @@ export default function HomeScreen() {
           <View style={styles.heroOverlay}>
             <Text style={styles.heroTitle}>Where your next journey begins</Text>
             <Text style={styles.heroSub}>Discover welcoming guesthouses across Botswana, from riverside retreats to city stays.</Text>
-            <Pressable onPress={() => router.push('/explore')} style={styles.ctaButton}>
+            <Pressable onPress={() => router.push('/explore')} style={styles.ctaButton} accessibilityRole="button">
               <Text style={styles.ctaText}>Explore stays</Text>
             </Pressable>
           </View>
@@ -66,6 +80,7 @@ export default function HomeScreen() {
             onChangeText={setSearchQuery}
             onSubmitEditing={() => { if (searchQuery.trim()) router.push({ pathname: '/explore', params: { q: searchQuery.trim() } }); }}
             returnKeyType="search"
+            accessibilityLabel="Search guesthouses"
           />
         </View>
 
@@ -79,11 +94,11 @@ export default function HomeScreen() {
               { icon: 'list-outline', label: 'Compare options', desc: 'Review prices, ratings, and listing details.' },
               { icon: 'heart-outline', label: 'Save favourites', desc: 'Keep interesting stays in one place.' },
             ].map((f) => (
-              <View key={f.label} style={styles.featureCard}>
-                <Ionicons name={f.icon as any} size={24} color={colors.dark} />
+              <Pressable key={f.label} onPress={() => router.push('/explore')} style={styles.featureCard} accessibilityRole="button">
+                <Ionicons name={f.icon as any} size={22} color={colors.dark} />
                 <Text style={styles.featureTitle}>{f.label}</Text>
                 <Text style={styles.featureDesc}>{f.desc}</Text>
-              </View>
+              </Pressable>
             ))}
           </View>
         </View>
@@ -92,30 +107,40 @@ export default function HomeScreen() {
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>Featured stays</Text>
-            <Pressable onPress={() => router.push('/explore')}>
-              <Text style={styles.seeAll}>See all stays →</Text>
+            <Pressable onPress={() => router.push('/explore')} accessibilityRole="button">
+              <Text style={styles.seeAll}>See all →</Text>
             </Pressable>
           </View>
+
           {loading ? (
-            <ActivityIndicator color={colors.dark} />
+            <View style={styles.loadingRow}>
+              <ActivityIndicator color={colors.dark} size="small" />
+              <Text style={styles.loadingText}>Loading stays…</Text>
+            </View>
           ) : error ? (
-            <View style={styles.emptyBox}>
-              <Text style={styles.emptyText}>Could not reach the server.</Text>
-              <Pressable onPress={retry} style={styles.retryBtn}><Text style={styles.retryText}>Retry</Text></Pressable>
+            <View style={styles.errorCard}>
+              <Ionicons name="cloud-offline-outline" size={32} color={colors.dark} />
+              <Text style={styles.errorTitle}>Could not reach the server</Text>
+              <Text style={styles.errorCopy}>{error}</Text>
+              <Pressable onPress={retry} style={styles.retryBtn} accessibilityRole="button">
+                <Text style={styles.retryText}>Retry</Text>
+              </Pressable>
             </View>
           ) : stays.length === 0 ? (
-            <View style={styles.emptyBox}>
-              <Text style={styles.emptyText}>No visible stays found right now.</Text>
+            <View style={styles.emptyCard}>
+              <Ionicons name="bed-outline" size={32} color={colors.muted} />
+              <Text style={styles.emptyTitle}>No visible stays found</Text>
+              <Text style={styles.emptyCopy}>Check back soon for new listings.</Text>
             </View>
           ) : (
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.carousel}>
               {featured.map((stay) => (
-                <Pressable key={stay.id} onPress={() => router.push(`/details?id=${stay.id}`)} style={styles.card}>
-                  <StayImage uri={stay.image} style={styles.cardImage} />
+                <Pressable key={stay.id} onPress={() => router.push(`/details?id=${stay.id}`)} style={styles.card} accessibilityRole="button">
+                  <StayImage uri={stay.image} color={stay.color} style={styles.cardImage} />
                   <View style={styles.cardBody}>
                     <Text numberOfLines={1} style={styles.cardName}>{stay.name}</Text>
                     <Text style={styles.cardLocation}>{stay.city}</Text>
-                    <Text style={styles.cardPrice}>${stay.pricePerNight || '--'} / night</Text>
+                    <Text style={styles.cardPrice}>${stay.price ?? '--'} / night</Text>
                   </View>
                 </Pressable>
               ))}
@@ -124,7 +149,7 @@ export default function HomeScreen() {
         </View>
 
         {/* Favourites promo */}
-        <Pressable onPress={() => router.push('/favourites')} style={styles.promo}>
+        <Pressable onPress={() => router.push('/favourites')} style={styles.promo} accessibilityRole="button">
           <Ionicons name="heart-outline" size={28} color={colors.dark} />
           <View style={{ flex: 1 }}>
             <Text style={styles.promoTitle}>Save your favourites</Text>
@@ -132,8 +157,6 @@ export default function HomeScreen() {
           </View>
           <Ionicons name="chevron-forward" size={20} color={colors.muted} />
         </Pressable>
-
-        {/* Login prompt handled by protected actions; removed broken unconditional render */}
       </ScrollView>
     </SafeAreaView>
   );
@@ -141,9 +164,10 @@ export default function HomeScreen() {
 
 const styles = StyleSheet.create({
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingTop: 12 },
+  brandRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   brand: { fontSize: 22, fontWeight: '700', color: colors.dark, letterSpacing: -0.5 },
   tagline: { fontSize: 13, color: colors.muted, marginTop: 2 },
-  profileBtn: { padding: 8, borderRadius: 999 },
+  profileBtn: { padding: 8, borderRadius: 999, backgroundColor: 'rgba(20,53,42,0.05)' },
   hero: { marginHorizontal: 16, marginTop: 16, borderRadius: 16, overflow: 'hidden', position: 'relative', height: 320 },
   heroImage: { width: '100%', height: 320, resizeMode: 'cover' },
   heroOverlay: { position: 'absolute', bottom: 0, left: 0, right: 0, padding: 20, backgroundColor: 'rgba(20,37,42,0.55)' },
@@ -155,14 +179,14 @@ const styles = StyleSheet.create({
   searchInput: { flex: 1, marginLeft: 10, fontSize: 15, color: colors.text },
   section: { marginHorizontal: 16, marginTop: 28 },
   sectionTitle: { fontSize: 20, fontWeight: '700', color: colors.dark, letterSpacing: -0.5 },
-  sectionHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  sectionHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 },
   seeAll: { fontSize: 13, fontWeight: '600', color: colors.dark },
   featuresGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginTop: 12 },
   featureCard: { width: '47%', backgroundColor: '#fff', padding: 14, borderRadius: 12, borderWidth: 1, borderColor: colors.border },
   featureTitle: { fontWeight: '600', fontSize: 13, color: colors.dark, marginTop: 6 },
   featureDesc: { fontSize: 12, color: colors.muted, marginTop: 4, lineHeight: 16 },
   carousel: { paddingHorizontal: 4, paddingTop: 8 },
-  card: { width: 260, marginRight: 12, backgroundColor: '#fff', borderRadius: 12, overflow: 'hidden', borderWidth: 1, borderColor: colors.border },
+  card: { width: 260, marginRight: 12, backgroundColor: '#fff', borderRadius: 12, overflow: 'hidden', borderWidth: 1, borderColor: colors.border, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 6, elevation: 2 },
   cardImage: { width: 260, height: 160, borderRadius: 12 },
   cardBody: { padding: 10 },
   cardName: { fontWeight: '600', fontSize: 14, color: colors.dark },
@@ -171,8 +195,14 @@ const styles = StyleSheet.create({
   promo: { flexDirection: 'row', alignItems: 'center', gap: 14, marginHorizontal: 16, marginTop: 24, padding: 16, backgroundColor: '#fff', borderRadius: 12, borderWidth: 1, borderColor: colors.border },
   promoTitle: { fontWeight: '600', fontSize: 15, color: colors.dark },
   promoDesc: { fontSize: 13, color: colors.muted, marginTop: 2 },
-  emptyBox: { paddingVertical: 40, alignItems: 'center' },
-  emptyText: { fontSize: 14, color: colors.muted },
-  retryBtn: { marginTop: 10, backgroundColor: colors.dark, paddingVertical: 8, paddingHorizontal: 16, borderRadius: 999 },
+  loadingRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 24, justifyContent: 'center' },
+  loadingText: { fontSize: 14, color: colors.muted },
+  errorCard: { paddingVertical: 36, alignItems: 'center', backgroundColor: '#fff', borderRadius: 12, borderWidth: 1, borderColor: colors.border, marginTop: 4 },
+  errorTitle: { fontSize: 16, fontWeight: '700', color: colors.dark, marginTop: 10 },
+  errorCopy: { fontSize: 13, color: colors.muted, marginTop: 4, textAlign: 'center', paddingHorizontal: 16 },
+  retryBtn: { marginTop: 12, backgroundColor: colors.dark, paddingVertical: 10, paddingHorizontal: 18, borderRadius: 999 },
   retryText: { color: '#fff', fontWeight: '600', fontSize: 13 },
+  emptyCard: { paddingVertical: 36, alignItems: 'center', backgroundColor: '#fff', borderRadius: 12, borderWidth: 1, borderColor: colors.border, marginTop: 4 },
+  emptyTitle: { fontSize: 15, fontWeight: '600', color: colors.dark, marginTop: 10 },
+  emptyCopy: { fontSize: 13, color: colors.muted, marginTop: 2 },
 });

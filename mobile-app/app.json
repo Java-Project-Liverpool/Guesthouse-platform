@@ -8,7 +8,8 @@
     "scheme": "mobileapp",
     "userInterfaceStyle": "automatic",
     "ios": {
-      "icon": "./assets/images/logo.png"
+      "icon": "./assets/images/logo.png",
+      "bundleIdentifier": "com.dumela.stays"
     },
     "android": {
       "package": "com.dumela.stays",
@@ -28,13 +29,22 @@
       [
         "expo-splash-screen",
         {
-          "backgroundColor": "#14352A",
+          "backgroundColor": "#F7F5F0",
           "image": "./assets/images/logo.png",
           "imageWidth": 150
         }
       ],
       "expo-font",
-      "expo-secure-store"
+      "expo-secure-store",
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "enableMinifyInReleaseBuilds": true,
+            "enableShrinkResourcesInReleaseBuilds": true
+          }
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,

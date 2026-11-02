@@ -3,32 +3,43 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useMemo, useState } from 'react';
 import {
   ActivityIndicator,
+  Alert,
   Pressable,
+  RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
   TextInput,
   View,
 } from 'react-native';
-import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 import FilterSheet, { countActiveFilters, defaultFilters, type Filters } from '@/components/filter-sheet';
 import GuesthouseCard from '@/components/guesthouse-card';
 import LoginPrompt from '@/components/login-prompt';
-import { Colors, Radii, Spacing, TabBarHeight, Typography } from '@/constants/theme';
+import { Colors, Radii, Typography } from '@/constants/theme';
+import { MAX_COMPARE_STAYS, toggleCompareStay, useComparison } from '@/data/comparison';
 import { useAuth } from '@/data/auth';
 import { useFavourites } from '@/data/favourites';
-import { useStays } from '@/data/stays';
+import { useStays, type Stay } from '@/data/stays';
+import { useTabBarPadding } from '@/hooks/use-tab-bar-padding';
 
 export default function ExploreScreen() {
   const router = useRouter();
-  const insets = useSafeAreaInsets();
   const { q, city: cityParam, filter } = useLocalSearchParams<{ q?: string; city?: string; filter?: string }>();
   const queryParam = typeof q === 'string' ? q : undefined;
   const selectedCityParam = typeof cityParam === 'string' ? cityParam.trim() : undefined;
   const { stays, loading, error, retry } = useStays();
   const { user } = useAuth();
   const { saved, toggleSaved } = useFavourites();
+  const tabBarPadding = useTabBarPadding();
+  const { stays: compareStays, has: isCompared } = useComparison();
+
+  const toggleCompare = (stay: Stay) => {
+    if (toggleCompareStay(stay) === 'full') {
+      Alert.alert('Comparison is full', `You can compare up to ${MAX_COMPARE_STAYS} stays. Remove one from the comparison first.`);
+    }
+  };
   const [queryOverride, setQueryOverride] = useState<{ source: string | undefined; value: string } | null>(null);
   const [filters, setFilters] = useState<Filters>(defaultFilters);
   const [cityOverride, setCityOverride] = useState<{ source: string | undefined; value: string } | null>(null);
@@ -76,6 +87,13 @@ export default function ExploreScreen() {
       });
   }, [effectiveFilters, query, stays]);
 
+  const [refreshing, setRefreshing] = useState(false);
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    try { retry(); } catch {}
+    setRefreshing(false);
+  };
+
   const clearFilters = () => {
     setQueryOverride({ source: queryParam, value: '' });
     setFilters(defaultFilters);
@@ -106,10 +124,8 @@ export default function ExploreScreen() {
       <ScrollView
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={[
-          styles.content,
-          { paddingBottom: insets.bottom + TabBarHeight + Spacing.five },
-        ]}>
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />}
+        contentContainerStyle={[styles.content, { paddingBottom: tabBarPadding }]}>
         <View style={styles.header}>
           <View>
             <Text style={styles.eyebrow}>DUMELA STAYS</Text>
@@ -174,6 +190,14 @@ export default function ExploreScreen() {
           {activeFilters > 0 ? <Text style={styles.resultsContext}>Filters applied</Text> : <Text style={styles.resultsContext}>Across Botswana</Text>}
         </View>
 
+        {compareStays.length > 0 ? (
+          <Pressable onPress={() => router.push('/compare')} accessibilityRole="button" style={({ pressed }) => [styles.compareBar, pressed && styles.pressed]}>
+            <Ionicons name="git-compare-outline" size={18} color="#FFFFFF" />
+            <Text style={styles.compareBarText}>Compare {compareStays.length} selected</Text>
+            <Ionicons name="chevron-forward" size={16} color="#FFFFFF" />
+          </Pressable>
+        ) : null}
+
         {loading ? (
           <View style={styles.loadingState}>
             <ActivityIndicator color={Colors.light.primary} />
@@ -216,6 +240,8 @@ export default function ExploreScreen() {
             key={stay.id}
             stay={stay}
             saved={saved.includes(stay.id)}
+            compared={isCompared(stay.id)}
+            onToggleCompare={() => toggleCompare(stay)}
             onPress={() => router.push({ pathname: '/details', params: { id: stay.id } })}
             onToggleSaved={() => void saveStay(stay.id)}
           />
@@ -269,5 +295,7 @@ const styles = StyleSheet.create({
   primaryButton: { minHeight: 46, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 18, marginTop: 17, borderRadius: Radii.pill, backgroundColor: Colors.light.primary },
   primaryButtonText: { ...Typography.supporting, fontWeight: '600', color: '#FFFFFF' },
   actionError: { ...Typography.supporting, color: '#A13E37', marginTop: 8 },
+  compareBar: { minHeight: 48, flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 16, borderRadius: Radii.control, backgroundColor: Colors.light.primary, marginBottom: 14 },
+  compareBarText: { flex: 1, ...Typography.supporting, fontWeight: '700', color: '#FFFFFF' },
   pressed: { opacity: 0.82 },
 });

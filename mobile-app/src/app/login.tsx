@@ -140,7 +140,8 @@ export default function LoginScreen() {
             <Pressable
               key={tab.key}
               style={[styles.tab, mode === tab.key && styles.tabActive]}
-              onPress={() => switchMode(tab.key)}>
+              onPress={() => switchMode(tab.key)}
+              disabled={busy}>
               <Text style={[styles.tabText, mode === tab.key && styles.tabTextActive]}>
                 {tab.label}
               </Text>
