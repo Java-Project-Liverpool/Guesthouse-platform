@@ -5,6 +5,7 @@ import {
   ActivityIndicator,
   Alert,
   Pressable,
+  RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
@@ -86,6 +87,13 @@ export default function ExploreScreen() {
       });
   }, [effectiveFilters, query, stays]);
 
+  const [refreshing, setRefreshing] = useState(false);
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    try { retry(); } catch {}
+    setRefreshing(false);
+  };
+
   const clearFilters = () => {
     setQueryOverride({ source: queryParam, value: '' });
     setFilters(defaultFilters);
@@ -116,6 +124,7 @@ export default function ExploreScreen() {
       <ScrollView
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />}
         contentContainerStyle={[styles.content, { paddingBottom: tabBarPadding }]}>
         <View style={styles.header}>
           <View>

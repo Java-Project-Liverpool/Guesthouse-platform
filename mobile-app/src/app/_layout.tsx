@@ -2,23 +2,29 @@ import { DarkTheme, DefaultTheme, Stack, ThemeProvider, usePathname, useRouter }
 import { NavigationBar } from 'expo-navigation-bar';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
-import { AppState, Platform, useColorScheme } from 'react-native';
-
+import { AppState, Platform } from 'react-native';
 import { AnimatedSplashOverlay } from '@/components/animated-icon';
 import { restoreSession, useAuth, validateSession } from '@/data/auth';
+import { restoreTheme, useTheme } from '@/data/theme';
 
 SplashScreen.preventAutoHideAsync();
 
 export default function TabLayout() {
-  const colorScheme = useColorScheme();
+  const { mode } = useTheme();
   const router = useRouter();
   const pathname = usePathname();
   const { accountSuspended, user } = useAuth();
   const userId = user?.id;
   const userRole = user?.role;
+  
   useEffect(() => {
     void restoreSession();
   }, []);
+  
+  useEffect(() => {
+    void restoreTheme();
+  }, []);
+  
   useEffect(() => {
     if (Platform.OS !== 'android') return;
     const hideNavigationBar = () => NavigationBar.setHidden(true);
@@ -28,11 +34,13 @@ export default function TabLayout() {
     });
     return () => subscription.remove();
   }, []);
+  
   useEffect(() => {
     if (accountSuspended && pathname !== '/account-disabled') {
       router.replace('/account-disabled');
     }
   }, [accountSuspended, pathname, router]);
+  
   useEffect(() => {
     if (!userId) return;
     const checkSession = () => void validateSession();
@@ -45,8 +53,9 @@ export default function TabLayout() {
       clearInterval(interval);
     };
   }, [userId, userRole]);
+  
   return (
-    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+    <ThemeProvider value={mode === 'dark' ? DarkTheme : DefaultTheme}>
       <AnimatedSplashOverlay />
       <Stack screenOptions={{ headerShown: false }} />
     </ThemeProvider>
