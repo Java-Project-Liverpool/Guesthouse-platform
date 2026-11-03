@@ -11,8 +11,9 @@ import { useStays, type Stay } from '@/data/stays';
 
 import { useAppColors, useThemedStyles } from '@/hooks/use-app-colors';
 import type { AppPalette } from '@/constants/theme';
+import { formatPula } from '@/utils/currency';
 
-const money = (value: number) => `P${value.toLocaleString('en-US')}`;
+const money = formatPula;
 
 function normaliseAmenity(name: string) {
   return name.trim().toLowerCase();

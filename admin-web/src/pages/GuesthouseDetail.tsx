@@ -12,6 +12,7 @@ import {
   setGuesthouseVisibility,
 } from '../services/guesthouseService';
 import type { Guesthouse, Rating, User } from '../types';
+import { formatPricePerNight } from '../utils/currency';
 
 interface GuesthouseDetailProps {
   id: string;
@@ -333,7 +334,7 @@ export const GuesthouseDetail: React.FC<GuesthouseDetailProps> = ({ id }) => {
               <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                 <span style={{ color: 'var(--text-muted)' }}>Price</span>
                 <span style={{ fontWeight: 700 }}>
-                  {guesthouse.pricePerNight ? `P${guesthouse.pricePerNight.toLocaleString()} / night` : '-'}
+                  {guesthouse.pricePerNight ? formatPricePerNight(guesthouse.pricePerNight) : '-'}
                 </span>
               </div>
 

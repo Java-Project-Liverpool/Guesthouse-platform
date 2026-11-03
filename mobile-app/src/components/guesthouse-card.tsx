@@ -2,6 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import StayImage from '@/components/stay-image';
+import { formatPula } from '@/utils/currency';
 import { Radii, Typography, type AppPalette } from '@/constants/theme';
 import type { Stay } from '@/data/stays';
 
@@ -16,10 +17,6 @@ type Props = {
   onToggleCompare?: () => void;
   compact?: boolean;
 };
-
-function formatPrice(value: number) {
-  return `P${value.toLocaleString('en-US')}`;
-}
 
 export default function GuesthouseCard({
   stay,
@@ -62,7 +59,7 @@ export default function GuesthouseCard({
             )}
             {stay.price !== undefined && (
               <Text style={styles.price}>
-                {formatPrice(stay.price)}<Text style={styles.perNight}> / night</Text>
+                {formatPula(stay.price)}<Text style={styles.perNight}> / night</Text>
               </Text>
             )}
           </View>

@@ -498,7 +498,7 @@ export const GuesthouseEdit: React.FC<GuesthouseEditProps> = ({ id }) => {
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
               <div>
                 <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.4rem', color: 'var(--text-muted)' }}>
-                  Price per night (Botswana Pula — P)
+                  Price per night (Botswana Pula, BWP)
                 </label>
                 <input
                   type="number"

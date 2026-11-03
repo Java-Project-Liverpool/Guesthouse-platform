@@ -9,6 +9,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import StayImage from '@/components/stay-image';
 import { useStays } from '@/data/stays';
 import { useTabBarPadding } from '@/hooks/use-tab-bar-padding';
+import { formatPula } from '@/utils/currency';
 
 
 import { useAppColors, useThemedStyles } from '@/hooks/use-app-colors';
@@ -133,7 +134,7 @@ export default function HomeScreen() {
                   <View style={styles.cardBody}>
                     <Text numberOfLines={1} style={styles.cardName}>{stay.name}</Text>
                     <Text style={styles.cardLocation}>{stay.city}</Text>
-                    <Text style={styles.cardPrice}>${stay.price ?? '--'} / night</Text>
+                    <Text style={styles.cardPrice}>{stay.price !== undefined ? `${formatPula(stay.price)} / night` : '-- / night'}</Text>
                   </View>
                 </Pressable>
               ))}

@@ -19,15 +19,14 @@ import { useStays } from '@/data/stays';
 
 import { useAppColors, useThemedStyles } from '@/hooks/use-app-colors';
 import type { AppPalette } from '@/constants/theme';
+import { formatPula } from '@/utils/currency';
 
 const sortOptions = [
   { key: 'cheapest', label: 'Cheapest first' },
   { key: 'rated', label: 'Top rated' },
 ] as const;
 
-function formatPrice(price: number) {
-  return 'P' + price.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
-}
+const formatPrice = formatPula;
 
 export default function SearchScreen() {
   const colors = useAppColors();

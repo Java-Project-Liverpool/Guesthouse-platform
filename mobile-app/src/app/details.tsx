@@ -13,8 +13,9 @@ import { getStay, getStayReviews, type GuesthouseReview, type Stay } from '@/dat
 
 import { useAppColors, useThemedStyles } from '@/hooks/use-app-colors';
 import type { AppPalette } from '@/constants/theme';
+import { formatPula } from '@/utils/currency';
 
-const money = (value: number) => `P${value.toLocaleString('en-US')}`;
+const money = formatPula;
 
 export default function DetailsScreen() {
   const colors = useAppColors();

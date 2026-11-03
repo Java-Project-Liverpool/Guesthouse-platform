@@ -9,6 +9,7 @@ import {
 } from '../components/ui/Icons';
 import { getDashboardStats } from '../services/guesthouseService';
 import type { DashboardStats } from '../types';
+import { formatPula } from '../utils/currency';
 
 export const Dashboard: React.FC = () => {
   const [stats, setStats] = useState<DashboardStats | null>(null);
@@ -388,7 +389,7 @@ export const Dashboard: React.FC = () => {
             <span style={{ fontSize: '0.85rem', fontWeight: 600 }}>Avg price / night</span>
           </div>
           <div style={{ fontSize: '2.4rem', fontWeight: 800, letterSpacing: '-0.02em', margin: '0 0 0.25rem' }}>
-            {data.avgPrice !== null ? `P${data.avgPrice.toLocaleString()}` : '-'}
+            {data.avgPrice !== null ? formatPula(data.avgPrice) : '-'}
           </div>
           <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
             {data.avgPrice !== null ? 'Botswana Pula across active stays' : 'calculated from database rates'}
@@ -496,7 +497,7 @@ export const Dashboard: React.FC = () => {
                       </td>
                       <td style={{ padding: '0.85rem 0', color: 'var(--text-muted)' }}>{stay.city}</td>
                       <td style={{ padding: '0.85rem 0', fontWeight: 600 }}>
-                        {stay.pricePerNight ? `P${stay.pricePerNight.toLocaleString()}` : '-'}
+                        {stay.pricePerNight ? formatPula(stay.pricePerNight) : '-'}
                       </td>
                       <td style={{ padding: '0.85rem 0' }}>
                         <span

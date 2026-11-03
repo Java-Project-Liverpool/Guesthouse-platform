@@ -15,6 +15,7 @@ import {
   setGuesthouseVisibility,
 } from '../services/guesthouseService';
 import type { Guesthouse } from '../types';
+import { formatPula } from '../utils/currency';
 
 type CityDropdownProps = {
   value: string;
@@ -392,7 +393,7 @@ export const GuesthouseList: React.FC = () => {
                       <td style={{ padding: '1rem 0', color: 'var(--text-muted)' }}>{stay.city}</td>
 
                       <td style={{ padding: '1rem 0', fontWeight: 600 }}>
-                        {stay.pricePerNight ? `P${stay.pricePerNight.toLocaleString()}` : '-'}
+                        {stay.pricePerNight ? formatPula(stay.pricePerNight) : '-'}
                       </td>
 
                       <td style={{ padding: '1rem 0', color: 'var(--star-gold)', fontWeight: 600 }}>
