@@ -8,17 +8,9 @@ import StayImage from '@/components/stay-image';
 import { MAX_COMPARE_STAYS, toggleCompareStay, useComparison } from '@/data/comparison';
 import { useStays, type Stay } from '@/data/stays';
 
-const colors = {
-  background: '#F7F5F0',
-  card: '#FFFFFF',
-  dark: '#14352A',
-  text: '#15201A',
-  muted: '#5F6B64',
-  border: '#E1E5E0',
-  chip: '#EEF1EC',
-  star: '#B7650A',
-  accent: '#B7650A',
-};
+
+import { useAppColors, useThemedStyles } from '@/hooks/use-app-colors';
+import type { AppPalette } from '@/constants/theme';
 
 const money = (value: number) => `P${value.toLocaleString('en-US')}`;
 
@@ -51,6 +43,7 @@ function bestId(stays: Stay[], pick: (stay: Stay) => number | undefined, higherI
 }
 
 function Row({ label, changed, children }: { label: string; changed?: boolean; children: ReactNode }) {
+  const styles = useThemedStyles(makeStyles);
   return (
     <View style={styles.row}>
       <View style={styles.rowHeader}>
@@ -63,6 +56,8 @@ function Row({ label, changed, children }: { label: string; changed?: boolean; c
 }
 
 export default function CompareScreen() {
+  const colors = useAppColors();
+  const styles = useThemedStyles(makeStyles);
   const router = useRouter();
   const { stays: selected, isFull, has, remove, clear } = useComparison();
   const catalogue = useStays();
@@ -87,7 +82,7 @@ export default function CompareScreen() {
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <View style={styles.header}>
           <Pressable style={styles.iconButton} onPress={() => router.back()} accessibilityRole="button" accessibilityLabel="Go back">
-            <Ionicons name="chevron-back" size={22} color={colors.dark} />
+            <Ionicons name="chevron-back" size={22} color={colors.primaryText} />
           </Pressable>
           <Text style={styles.headerTitle}>Compare stays</Text>
           {count > 0 ? (
@@ -115,7 +110,7 @@ export default function CompareScreen() {
                 </Pressable>
                 <Text style={styles.selectedName} numberOfLines={2}>{stay.name}</Text>
                 <Pressable onPress={() => remove(stay.id)} accessibilityRole="button" accessibilityLabel={`Remove ${stay.name} from comparison`} style={styles.removeButton}>
-                  <Ionicons name="close" size={14} color={colors.muted} />
+                  <Ionicons name="close" size={14} color={colors.textSecondary} />
                   <Text style={styles.removeText}>Remove</Text>
                 </Pressable>
               </View>
@@ -141,7 +136,7 @@ export default function CompareScreen() {
                 <View key={stay.id} style={styles.cell}>
                   {stay.rating !== undefined ? (
                     <View style={styles.ratingRow}>
-                      <Ionicons name="star" size={15} color={colors.star} />
+                      <Ionicons name="star" size={15} color={colors.secondary} />
                       <Text style={styles.ratingText}>{stay.rating.toFixed(1)}</Text>
                     </View>
                   ) : (
@@ -209,9 +204,9 @@ export default function CompareScreen() {
                           {stay.amenities.length === 0 ? (
                             <Text style={styles.muted}>Not listed</Text>
                           ) : flags[index] ? (
-                            <Ionicons name="checkmark-circle" size={22} color={colors.dark} accessibilityLabel="Included" />
+                            <Ionicons name="checkmark-circle" size={22} color={colors.primaryText} accessibilityLabel="Included" />
                           ) : (
-                            <Ionicons name="close-circle-outline" size={22} color={colors.muted} accessibilityLabel="Not included" />
+                            <Ionicons name="close-circle-outline" size={22} color={colors.textSecondary} accessibilityLabel="Not included" />
                           )}
                         </View>
                       ))}
@@ -243,12 +238,12 @@ export default function CompareScreen() {
           </View>
         ) : count === 1 ? (
           <View style={styles.hint}>
-            <Ionicons name="git-compare-outline" size={22} color={colors.dark} />
+            <Ionicons name="git-compare-outline" size={22} color={colors.primaryText} />
             <Text style={styles.hintText}>Select one more stay to see the comparison.</Text>
           </View>
         ) : (
           <View style={styles.hint}>
-            <Ionicons name="git-compare-outline" size={22} color={colors.dark} />
+            <Ionicons name="git-compare-outline" size={22} color={colors.primaryText} />
             <Text style={styles.hintText}>Nothing selected yet. Pick stays below, or tap Compare on any guesthouse card.</Text>
           </View>
         )}
@@ -259,12 +254,12 @@ export default function CompareScreen() {
           <Text style={styles.note}>Remove a stay to make room for another.</Text>
         ) : catalogue.loading ? (
           <View style={styles.loading}>
-            <ActivityIndicator color={colors.dark} />
+            <ActivityIndicator color={colors.primaryText} />
             <Text style={styles.muted}>Loading guesthouses…</Text>
           </View>
         ) : catalogue.error ? (
           <View style={styles.hint}>
-            <Ionicons name="cloud-offline-outline" size={22} color={colors.dark} />
+            <Ionicons name="cloud-offline-outline" size={22} color={colors.primaryText} />
             <Text style={styles.hintText}>{catalogue.error}</Text>
             <Pressable style={styles.retryButton} onPress={catalogue.retry} accessibilityRole="button">
               <Text style={styles.retryText}>Try again</Text>
@@ -289,7 +284,7 @@ export default function CompareScreen() {
                   {[stay.city, stay.price !== undefined ? money(stay.price) : null].filter(Boolean).join(' · ')}
                 </Text>
               </View>
-              <Ionicons name="add-circle-outline" size={24} color={colors.dark} />
+              <Ionicons name="add-circle-outline" size={24} color={colors.primaryText} />
             </Pressable>
           ))
         )}
@@ -299,6 +294,7 @@ export default function CompareScreen() {
 }
 
 function Tag({ text }: { text: string }) {
+  const styles = useThemedStyles(makeStyles);
   return (
     <View style={styles.tag}>
       <Text style={styles.tagText}>{text}</Text>
@@ -306,7 +302,7 @@ function Tag({ text }: { text: string }) {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: AppPalette) => StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.background },
   content: { width: '100%', maxWidth: 560, alignSelf: 'center', paddingHorizontal: 18, paddingTop: 12, paddingBottom: 48 },
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 },
@@ -314,46 +310,46 @@ const styles = StyleSheet.create({
   iconSpacer: { width: 44 },
   headerTitle: { fontSize: 20, fontWeight: '800', color: colors.text },
   clearButton: { minHeight: 44, justifyContent: 'center', paddingHorizontal: 6 },
-  clearText: { fontSize: 15, fontWeight: '700', color: colors.dark },
-  intro: { fontSize: 14, color: colors.muted, marginBottom: 18 },
+  clearText: { fontSize: 15, fontWeight: '700', color: colors.primaryText },
+  intro: { fontSize: 14, color: colors.textSecondary, marginBottom: 18 },
 
   selectedRow: { flexDirection: 'row', gap: 10, marginBottom: 18 },
   selectedColumn: { flex: 1, minWidth: 0, alignItems: 'stretch' },
   thumb: { height: 96, borderRadius: 14, overflow: 'hidden' },
   selectedName: { fontSize: 14, fontWeight: '700', color: colors.text, marginTop: 8, minHeight: 36 },
   removeButton: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 4, minHeight: 32 },
-  removeText: { fontSize: 13, fontWeight: '600', color: colors.muted },
+  removeText: { fontSize: 13, fontWeight: '600', color: colors.textSecondary },
 
-  table: { backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border, borderRadius: 18, paddingHorizontal: 14, paddingVertical: 12, marginBottom: 22 },
+  table: { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.divider, borderRadius: 18, paddingHorizontal: 14, paddingVertical: 12, marginBottom: 22 },
   row: { paddingVertical: 8 },
   rowHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 6 },
-  rowLabel: { fontSize: 13, fontWeight: '700', color: colors.muted },
-  differs: { fontSize: 11, fontWeight: '800', color: colors.accent, textTransform: 'uppercase', letterSpacing: 0.6 },
+  rowLabel: { fontSize: 13, fontWeight: '700', color: colors.textSecondary },
+  differs: { fontSize: 11, fontWeight: '800', color: colors.secondary, textTransform: 'uppercase', letterSpacing: 0.6 },
   cells: { flexDirection: 'row', gap: 10 },
   cell: { flex: 1, minWidth: 0, alignItems: 'flex-start', gap: 6 },
   value: { fontSize: 17, fontWeight: '800', color: colors.text },
   body: { fontSize: 14, lineHeight: 20, color: colors.text },
   bodySmall: { fontSize: 13, lineHeight: 18, color: colors.text },
-  muted: { fontSize: 13, color: colors.muted },
+  muted: { fontSize: 13, color: colors.textSecondary },
   ratingRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  ratingText: { fontSize: 17, fontWeight: '800', color: colors.star },
-  tag: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12, backgroundColor: colors.dark },
-  tagText: { fontSize: 12, fontWeight: '700', color: '#FFFFFF' },
-  divider: { height: 1, backgroundColor: colors.border, marginVertical: 4 },
+  ratingText: { fontSize: 17, fontWeight: '800', color: colors.secondary },
+  tag: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12, backgroundColor: colors.primary },
+  tagText: { fontSize: 12, fontWeight: '700', color: colors.onPrimary },
+  divider: { height: 1, backgroundColor: colors.divider, marginVertical: 4 },
   sectionLabel: { fontSize: 15, fontWeight: '800', color: colors.text, marginTop: 14, marginBottom: 4 },
-  note: { fontSize: 13, lineHeight: 18, color: colors.muted, marginTop: 8 },
+  note: { fontSize: 13, lineHeight: 18, color: colors.textSecondary, marginTop: 8 },
 
   actions: { flexDirection: 'row', gap: 10, marginTop: 14 },
-  actionButton: { flex: 1, minWidth: 0, height: 46, borderRadius: 12, borderWidth: 1, borderColor: colors.dark, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 6 },
-  actionText: { fontSize: 13, fontWeight: '700', color: colors.dark },
+  actionButton: { flex: 1, minWidth: 0, height: 46, borderRadius: 12, borderWidth: 1, borderColor: colors.primary, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 6 },
+  actionText: { fontSize: 13, fontWeight: '700', color: colors.primaryText },
 
-  hint: { alignItems: 'center', gap: 10, padding: 20, borderRadius: 18, backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border, marginBottom: 22 },
-  hintText: { fontSize: 14, lineHeight: 20, color: colors.muted, textAlign: 'center' },
-  retryButton: { minHeight: 42, paddingHorizontal: 18, borderRadius: 21, backgroundColor: colors.dark, alignItems: 'center', justifyContent: 'center', marginTop: 4 },
-  retryText: { fontSize: 14, fontWeight: '700', color: '#FFFFFF' },
+  hint: { alignItems: 'center', gap: 10, padding: 20, borderRadius: 18, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.divider, marginBottom: 22 },
+  hintText: { fontSize: 14, lineHeight: 20, color: colors.textSecondary, textAlign: 'center' },
+  retryButton: { minHeight: 42, paddingHorizontal: 18, borderRadius: 21, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center', marginTop: 4 },
+  retryText: { fontSize: 14, fontWeight: '700', color: colors.onPrimary },
   loading: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 14 },
 
-  candidate: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 10, borderRadius: 16, backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border, marginTop: 10 },
+  candidate: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 10, borderRadius: 16, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.divider, marginTop: 10 },
   candidateThumb: { width: 56, height: 56, borderRadius: 12, overflow: 'hidden' },
   candidateInfo: { flex: 1, minWidth: 0, gap: 2 },
   candidateName: { fontSize: 15, fontWeight: '700', color: colors.text },

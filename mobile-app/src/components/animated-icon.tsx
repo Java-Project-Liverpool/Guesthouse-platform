@@ -5,10 +5,14 @@ import { Dimensions, StyleSheet, Text, View } from 'react-native';
 import Animated, { Easing, FadeIn, Keyframe } from 'react-native-reanimated';
 import { scheduleOnRN } from 'react-native-worklets';
 
+import { useThemedStyles } from '@/hooks/use-app-colors';
+import type { AppPalette } from '@/constants/theme';
+
 const INITIAL_SCALE_FACTOR = Dimensions.get('screen').height / 90;
 const DURATION = 600;
 
 export function AnimatedSplashOverlay() {
+  const styles = useThemedStyles(makeStyles);
   const [animate, setAnimate] = useState(false);
   const [visible, setVisible] = useState(true);
 
@@ -93,6 +97,7 @@ const logoKeyframe = new Keyframe({
 });
 
 export function AnimatedIcon() {
+  const styles = useThemedStyles(makeStyles);
   return (
     <View style={styles.iconContainer}>
       <Animated.View entering={keyframe.duration(DURATION)} style={styles.background} />
@@ -103,7 +108,7 @@ export function AnimatedIcon() {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: AppPalette) => StyleSheet.create({
   imageContainer: {
     justifyContent: 'center',
     alignItems: 'center',
@@ -133,13 +138,13 @@ const styles = StyleSheet.create({
   },
   splashOverlay: {
     ...StyleSheet.absoluteFill,
-    backgroundColor: '#F7F5F0',
+    backgroundColor: colors.background,
     alignItems: 'center',
     justifyContent: 'center',
     zIndex: 1000,
   },
   brand: { alignItems: 'center', paddingHorizontal: 32, gap: 6 },
   logo: { width: 112, height: 112, marginBottom: 14 },
-  name: { fontSize: 26, fontWeight: '800', color: '#14352A', letterSpacing: -0.3 },
-  tagline: { fontSize: 15, color: '#5F6B64', textAlign: 'center' },
+  name: { fontSize: 26, fontWeight: '800', color: colors.primaryText, letterSpacing: -0.3 },
+  tagline: { fontSize: 15, color: colors.textSecondary, textAlign: 'center' },
 });

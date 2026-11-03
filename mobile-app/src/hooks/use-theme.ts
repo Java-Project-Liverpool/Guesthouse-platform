@@ -1,11 +1,5 @@
-/**
- * Theme hook reading from persisted user preference.
- */
-import { Colors } from '@/constants/theme';
-import { useTheme as useThemeStore } from '@/data/theme';
+import { useAppColors } from '@/hooks/use-app-colors';
 
 export function useTheme() {
-  const mode = useThemeStore().mode;
-  const theme = mode === 'dark' ? Colors.dark : Colors.light;
-  return theme;
+  return useAppColors();
 }

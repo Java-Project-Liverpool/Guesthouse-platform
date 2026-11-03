@@ -2,15 +2,12 @@ import { useRouter } from 'expo-router';
 import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-const colors = {
-  background: '#F7F5F0',
-  dark: '#14352A',
-  text: '#15201A',
-  muted: '#5F6B64',
-  logoTile: '#F1F4EF',
-};
+
+import { useThemedStyles } from '@/hooks/use-app-colors';
+import type { AppPalette } from '@/constants/theme';
 
 export default function WelcomeScreen() {
+  const styles = useThemedStyles(makeStyles);
   const router = useRouter();
 
   return (
@@ -40,7 +37,7 @@ export default function WelcomeScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: AppPalette) => StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.background },
   content: {
     flex: 1,
@@ -57,31 +54,31 @@ const styles = StyleSheet.create({
     width: 72,
     height: 72,
     borderRadius: 20,
-    backgroundColor: colors.logoTile,
+    backgroundColor: colors.backgroundSecondary,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 24,
   },
   logo: { width: 54, height: 54 },
-  brand: { fontSize: 14, color: colors.muted },
+  brand: { fontSize: 14, color: colors.textSecondary },
   title: { fontSize: 34, fontWeight: '800', color: colors.text, marginTop: 4, marginBottom: 14 },
-  body: { fontSize: 16, color: colors.muted, lineHeight: 24 },
+  body: { fontSize: 16, color: colors.textSecondary, lineHeight: 24 },
   primaryButton: {
     height: 54,
-    backgroundColor: colors.dark,
+    backgroundColor: colors.primary,
     borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 14,
   },
-  primaryText: { fontSize: 16, fontWeight: '700', color: '#FFFFFF' },
+  primaryText: { fontSize: 16, fontWeight: '700', color: colors.onPrimary },
   outlineButton: {
     height: 54,
     borderWidth: 1,
-    borderColor: colors.dark,
+    borderColor: colors.primary,
     borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  outlineText: { fontSize: 16, fontWeight: '700', color: colors.dark },
+  outlineText: { fontSize: 16, fontWeight: '700', color: colors.primaryText },
 });

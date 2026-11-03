@@ -6,19 +6,13 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useAuth } from '@/data/auth';
 
-const colors = {
-  background: '#F7F5F0',
-  card: '#FFFFFF',
-  dark: '#14352A',
-  text: '#15201A',
-  muted: '#5F6B64',
-  border: '#C8CEC8',
-  chip: '#EEF1EC',
-  danger: '#B3261E',
-  success: '#2E7D32',
-};
+
+import { useAppColors, useThemedStyles } from '@/hooks/use-app-colors';
+import type { AppPalette } from '@/constants/theme';
 
 export default function ChangePasswordScreen() {
+  const colors = useAppColors();
+  const styles = useThemedStyles(makeStyles);
   const router = useRouter();
   const { user, token, restoring } = useAuth();
   const [currentPassword, setCurrentPassword] = useState('');
@@ -66,32 +60,32 @@ export default function ChangePasswordScreen() {
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
         <View style={styles.header}>
           <Pressable style={styles.backButton} onPress={() => router.back()}>
-            <Ionicons name="chevron-back" size={22} color={colors.dark} />
+            <Ionicons name="chevron-back" size={22} color={colors.primaryText} />
           </Pressable>
           <Text style={styles.headerTitle}>Change password</Text>
           <View style={styles.backButtonSpace} />
         </View>
 
         <Text style={styles.label}>Current password</Text>
-        <TextInput style={styles.input} secureTextEntry value={currentPassword} onChangeText={setCurrentPassword} placeholder="Enter current password" placeholderTextColor={colors.muted} />
+        <TextInput style={styles.input} secureTextEntry value={currentPassword} onChangeText={setCurrentPassword} placeholder="Enter current password" placeholderTextColor={colors.placeholder} />
 
         <Text style={styles.label}>New password</Text>
-        <TextInput style={styles.input} secureTextEntry value={newPassword} onChangeText={setNewPassword} placeholder="Enter new password" placeholderTextColor={colors.muted} />
+        <TextInput style={styles.input} secureTextEntry value={newPassword} onChangeText={setNewPassword} placeholder="Enter new password" placeholderTextColor={colors.placeholder} />
 
         <Text style={styles.label}>Confirm new password</Text>
-        <TextInput style={styles.input} secureTextEntry value={confirmPassword} onChangeText={setConfirmPassword} placeholder="Confirm new password" placeholderTextColor={colors.muted} />
+        <TextInput style={styles.input} secureTextEntry value={confirmPassword} onChangeText={setConfirmPassword} placeholder="Confirm new password" placeholderTextColor={colors.placeholder} />
 
         {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
         <Pressable style={[styles.primaryButton, busy && styles.primaryButtonDisabled]} onPress={save} disabled={busy}>
-          {busy ? <ActivityIndicator color="#fff" /> : <Text style={styles.primaryText}>Save</Text>}
+          {busy ? <ActivityIndicator color={colors.onPrimary} /> : <Text style={styles.primaryText}>Save</Text>}
         </Pressable>
       </ScrollView>
     </SafeAreaView>
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: AppPalette) => StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.background },
   content: { width: '100%', maxWidth: 480, alignSelf: 'center', paddingHorizontal: 20, paddingTop: 16, paddingBottom: 40 },
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 },
@@ -99,9 +93,9 @@ const styles = StyleSheet.create({
   backButtonSpace: { width: 44 },
   headerTitle: { fontSize: 20, fontWeight: '800', color: colors.text },
   label: { fontSize: 14, fontWeight: '600', color: colors.text, marginTop: 14, marginBottom: 6 },
-  input: { height: 54, backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border, borderRadius: 14, paddingHorizontal: 16, fontSize: 16, color: colors.text },
-  errorText: { color: colors.danger, fontSize: 14, marginTop: 12 },
-  primaryButton: { height: 54, backgroundColor: colors.dark, borderRadius: 14, alignItems: 'center', justifyContent: 'center', marginTop: 24 },
+  input: { height: 54, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: 14, paddingHorizontal: 16, fontSize: 16, color: colors.text },
+  errorText: { color: colors.error, fontSize: 14, marginTop: 12 },
+  primaryButton: { height: 54, backgroundColor: colors.primary, borderRadius: 14, alignItems: 'center', justifyContent: 'center', marginTop: 24 },
   primaryButtonDisabled: { opacity: 0.6 },
-  primaryText: { fontSize: 16, fontWeight: '700', color: '#FFFFFF' },
+  primaryText: { fontSize: 16, fontWeight: '700', color: colors.onPrimary },
 });

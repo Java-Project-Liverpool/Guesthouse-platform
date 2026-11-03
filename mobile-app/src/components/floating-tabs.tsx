@@ -11,7 +11,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import type { ComponentProps } from 'react';
 
-import { Colors, Radii, Typography } from '@/constants/theme';
+import { Radii, type AppPalette } from '@/constants/theme';
+import { useAppColors, useThemedStyles } from '@/hooks/use-app-colors';
 
 type TabButtonProps = Omit<TabTriggerSlotProps, 'ref'> & {
   label: string;
@@ -20,6 +21,8 @@ type TabButtonProps = Omit<TabTriggerSlotProps, 'ref'> & {
 };
 
 function TabButton({ label, icon, activeIcon, isFocused, ...pressableProps }: TabButtonProps) {
+  const colors = useAppColors();
+  const styles = useTabStyles();
   return (
     <Pressable
       {...pressableProps}
@@ -31,7 +34,7 @@ function TabButton({ label, icon, activeIcon, isFocused, ...pressableProps }: Ta
         <Ionicons
           name={isFocused ? activeIcon : icon}
           size={20}
-          color={isFocused ? '#14352A' : '#E1E9E3'}
+          color={isFocused ? colors.dark : colors.tabBarInactive}
         />
         <Text style={[styles.tabLabel, isFocused && styles.tabLabelActive]}>{label}</Text>
       </View>
@@ -41,6 +44,7 @@ function TabButton({ label, icon, activeIcon, isFocused, ...pressableProps }: Ta
 
 function FloatingTabList(props: TabListProps) {
   const insets = useSafeAreaInsets();
+  const styles = useTabStyles();
   return (
     <View
       {...props}
@@ -55,6 +59,7 @@ function FloatingTabList(props: TabListProps) {
 }
 
 export default function FloatingTabs() {
+  const styles = useTabStyles();
   return (
     <Tabs>
       <TabSlot style={styles.slot} />
@@ -78,7 +83,7 @@ export default function FloatingTabs() {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: AppPalette) => StyleSheet.create({
   slot: { flex: 1 },
   position: {
     position: 'absolute',
@@ -93,11 +98,11 @@ const styles = StyleSheet.create({
     minHeight: 56,
     padding: 6,
     borderRadius: Radii.pill,
-    backgroundColor: '#14352A',
+    backgroundColor: colors.dark,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    shadowColor: '#000',
+    shadowColor: colors.overlay,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.15,
     shadowRadius: 12,
@@ -106,7 +111,9 @@ const styles = StyleSheet.create({
   tabPressable: { flex: 1, borderRadius: Radii.pill, alignItems: 'center', justifyContent: 'center', paddingVertical: 4 },
   pressed: { opacity: 0.82 },
   tabContent: { alignItems: 'center', justifyContent: 'center', paddingVertical: 2 },
-  tabContentActive: { backgroundColor: '#FFFFFF', borderRadius: Radii.pill, paddingHorizontal: 10, paddingVertical: 4 },
-  tabLabel: { fontSize: 10, fontWeight: '500', color: '#E1E9E3', marginTop: 2 },
-  tabLabelActive: { color: '#14352A', fontWeight: '700' },
+  tabContentActive: { backgroundColor: colors.onPrimary, borderRadius: Radii.pill, paddingHorizontal: 10, paddingVertical: 4 },
+  tabLabel: { fontSize: 10, fontWeight: '500', color: colors.tabBarInactive, marginTop: 2 },
+  tabLabelActive: { color: colors.dark, fontWeight: '700' },
 });
+
+const useTabStyles = () => useThemedStyles(makeStyles);

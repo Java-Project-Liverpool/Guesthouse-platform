@@ -6,9 +6,13 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth, logout as doLogout } from '@/data/auth';
 import { apiRequest } from '@/data/api';
 
-const colors = { background: '#F7F5F0', card: '#FFFFFF', text: '#15201A', muted: '#5F6B64', dark: '#14352A', danger: '#B3261E', border: '#C8CEC8', accent: '#B7650A' };
+
+import { useAppColors, useThemedStyles } from '@/hooks/use-app-colors';
+import type { AppPalette } from '@/constants/theme';
 
 export default function DeleteAccountScreen() {
+  const colors = useAppColors();
+  const styles = useThemedStyles(makeStyles);
   const router = useRouter();
   const { user, token } = useAuth();
   const [password, setPassword] = useState('');
@@ -34,7 +38,7 @@ export default function DeleteAccountScreen() {
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }} edges={['top', 'left', 'right', 'bottom']}>
       <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 48 }}>
         <Pressable onPress={() => router.back()} accessibilityLabel="Back" style={{ padding: 8, alignSelf: 'flex-start' }}>
-          <Ionicons name="chevron-back" size={22} color={colors.dark} />
+          <Ionicons name="chevron-back" size={22} color={colors.primaryText} />
         </Pressable>
         <Text style={styles.title}>Delete account</Text>
         <Text style={styles.body}>This permanently removes your profile, favourites, reviews, and notifications.</Text>
@@ -45,7 +49,7 @@ export default function DeleteAccountScreen() {
             value={password}
             onChangeText={setPassword}
             placeholder="Current password"
-            placeholderTextColor={colors.muted}
+            placeholderTextColor={colors.placeholder}
             style={styles.input}
             autoCapitalize="none"
             accessibilityLabel="Current password"
@@ -57,20 +61,20 @@ export default function DeleteAccountScreen() {
           onPress={() => { if (!busy) submit(); }}
           accessibilityRole="button"
           accessibilityState={{ busy }}>
-          {busy ? <ActivityIndicator color="#FFFFFF" /> : <Text style={styles.dangerText}>Confirm and delete account</Text>}
+          {busy ? <ActivityIndicator color={colors.onPrimary} /> : <Text style={styles.dangerText}>Confirm and delete account</Text>}
         </Pressable>
       </ScrollView>
     </SafeAreaView>
   );
 }
 
-const styles = StyleSheet.create({
-  title: { fontSize: 24, fontWeight: '800', color: colors.dark, marginTop: 10, marginBottom: 12 },
-  body: { fontSize: 15, color: colors.muted, lineHeight: 22, marginBottom: 16 },
-  note: { fontSize: 13, color: colors.dark, lineHeight: 20, backgroundColor: '#FFF8E7', padding: 14, borderRadius: 12, marginBottom: 20 },
-  inputCard: { backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border, borderRadius: 12, paddingHorizontal: 14, paddingVertical: 10, marginBottom: 16 },
+const makeStyles = (colors: AppPalette) => StyleSheet.create({
+  title: { fontSize: 24, fontWeight: '800', color: colors.primaryText, marginTop: 10, marginBottom: 12 },
+  body: { fontSize: 15, color: colors.textSecondary, lineHeight: 22, marginBottom: 16 },
+  note: { fontSize: 13, color: colors.primaryText, lineHeight: 20, backgroundColor: colors.backgroundSecondary, padding: 14, borderRadius: 12, marginBottom: 20 },
+  inputCard: { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: 12, paddingHorizontal: 14, paddingVertical: 10, marginBottom: 16 },
   input: { fontSize: 15, color: colors.text, minHeight: 36 },
-  error: { fontSize: 13, color: colors.danger, marginBottom: 10 },
-  dangerButton: { minHeight: 52, borderRadius: 12, backgroundColor: colors.danger, alignItems: 'center', justifyContent: 'center', marginTop: 8 },
-  dangerText: { color: '#FFFFFF', fontWeight: '700', fontSize: 15 },
+  error: { fontSize: 13, color: colors.error, marginBottom: 10 },
+  dangerButton: { minHeight: 52, borderRadius: 12, backgroundColor: colors.error, alignItems: 'center', justifyContent: 'center', marginTop: 8 },
+  dangerText: { color: colors.onPrimary, fontWeight: '700', fontSize: 15 },
 });

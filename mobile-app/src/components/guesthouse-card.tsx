@@ -2,8 +2,10 @@ import { Ionicons } from '@expo/vector-icons';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import StayImage from '@/components/stay-image';
-import { Colors, Radii, Typography } from '@/constants/theme';
+import { Radii, Typography, type AppPalette } from '@/constants/theme';
 import type { Stay } from '@/data/stays';
+
+import { useAppColors, useThemedStyles } from '@/hooks/use-app-colors';
 
 type Props = {
   stay: Stay;
@@ -28,6 +30,8 @@ export default function GuesthouseCard({
   onToggleCompare,
   compact = false,
 }: Props) {
+  const colors = useAppColors();
+  const styles = useThemedStyles(makeStyles);
   return (
     <View style={[styles.card, compact && styles.compactCard]}>
       <Pressable
@@ -43,7 +47,7 @@ export default function GuesthouseCard({
         <View style={styles.info}>
           <Text style={styles.name} numberOfLines={1}>{stay.name}</Text>
           <View style={styles.locationRow}>
-            <Ionicons name="location-outline" size={15} color={Colors.light.textSecondary} />
+            <Ionicons name="location-outline" size={15} color={colors.textSecondary} />
             <Text style={styles.location} numberOfLines={1}>
               {[stay.city, stay.country].filter(Boolean).join(', ') || 'Botswana'}
             </Text>
@@ -51,7 +55,7 @@ export default function GuesthouseCard({
           <View style={styles.metaRow}>
             {stay.rating !== undefined && (
               <View style={styles.rating}>
-                <Ionicons name="star" size={14} color="#A96325" />
+                <Ionicons name="star" size={14} color={colors.star} />
                 <Text style={styles.ratingText}>{stay.rating.toFixed(1)}</Text>
                 {stay.ratings ? <Text style={styles.reviewCount}>({stay.ratings})</Text> : null}
               </View>
@@ -72,7 +76,7 @@ export default function GuesthouseCard({
           accessibilityState={{ selected: compared }}
           accessibilityLabel={`${compared ? 'Remove' : 'Add'} ${stay.name} ${compared ? 'from' : 'to'} comparison`}
           style={({ pressed }) => [styles.compareChip, compared && styles.compareChipActive, pressed && styles.pressed]}>
-          <Ionicons name={compared ? 'checkmark' : 'git-compare-outline'} size={15} color={compared ? '#FFFFFF' : Colors.light.primary} />
+          <Ionicons name={compared ? 'checkmark' : 'git-compare-outline'} size={15} color={compared ? colors.onPrimary : colors.primaryText} />
           <Text style={[styles.compareText, compared && styles.compareTextActive]}>{compared ? 'Added' : 'Compare'}</Text>
         </Pressable>
       ) : null}
@@ -83,21 +87,21 @@ export default function GuesthouseCard({
           accessibilityRole="button"
           accessibilityLabel={`${saved ? 'Remove' : 'Save'} ${stay.name}${saved ? ' from' : ' to'} favourites`}
           style={({ pressed }) => [styles.saveButton, pressed && styles.pressed]}>
-          <Ionicons name={saved ? 'heart' : 'heart-outline'} size={20} color={saved ? '#A94940' : Colors.light.text} />
+          <Ionicons name={saved ? 'heart' : 'heart-outline'} size={20} color={saved ? colors.heart : colors.text} />
         </Pressable>
       ) : null}
     </View>
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: AppPalette) => StyleSheet.create({
   card: {
     width: '100%',
     overflow: 'hidden',
     borderRadius: Radii.card,
-    backgroundColor: Colors.light.backgroundElement,
+    backgroundColor: colors.backgroundElement,
     borderWidth: 1,
-    borderColor: Colors.light.border,
+    borderColor: colors.border,
     marginBottom: 16,
   },
   compactCard: { width: 292, marginBottom: 0 },
@@ -105,15 +109,15 @@ const styles = StyleSheet.create({
   photo: { width: '100%', height: 188, borderRadius: 0 },
   compactPhoto: { height: 184 },
   info: { paddingHorizontal: 15, paddingTop: 13, paddingBottom: 15 },
-  name: { ...Typography.cardTitle, color: Colors.light.text, paddingRight: 38 },
+  name: { ...Typography.cardTitle, color: colors.text, paddingRight: 38 },
   locationRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 5 },
-  location: { ...Typography.supporting, flexShrink: 1, color: Colors.light.textSecondary },
+  location: { ...Typography.supporting, flexShrink: 1, color: colors.textSecondary },
   metaRow: { minHeight: 24, marginTop: 10, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
   rating: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  ratingText: { ...Typography.supporting, fontWeight: '600', color: Colors.light.text },
-  reviewCount: { ...Typography.metadata, color: Colors.light.textSecondary },
-  price: { ...Typography.supporting, fontWeight: '600', color: Colors.light.text },
-  perNight: { ...Typography.metadata, fontWeight: '400', color: Colors.light.textSecondary },
+  ratingText: { ...Typography.supporting, fontWeight: '600', color: colors.text },
+  reviewCount: { ...Typography.metadata, color: colors.textSecondary },
+  price: { ...Typography.supporting, fontWeight: '600', color: colors.text },
+  perNight: { ...Typography.metadata, fontWeight: '400', color: colors.textSecondary },
   saveButton: {
     position: 'absolute',
     top: 12,
@@ -123,7 +127,7 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#FFFEFA',
+    backgroundColor: colors.surface,
   },
   compareChip: {
     position: 'absolute',
@@ -135,10 +139,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    backgroundColor: '#FFFEFA',
+    backgroundColor: colors.surface,
   },
-  compareChipActive: { backgroundColor: Colors.light.primary },
-  compareText: { fontSize: 13, fontWeight: '600', color: Colors.light.primary },
-  compareTextActive: { color: '#FFFFFF' },
+  compareChipActive: { backgroundColor: colors.primary },
+  compareText: { fontSize: 13, fontWeight: '600', color: colors.primaryText },
+  compareTextActive: { color: colors.onPrimary },
   pressed: { opacity: 0.82 },
 });

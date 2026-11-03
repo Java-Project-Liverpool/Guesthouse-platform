@@ -3,22 +3,20 @@ import { useRouter } from 'expo-router';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-const colors = {
-  background: '#F7F5F0',
-  dark: '#14352A',
-  text: '#15201A',
-  muted: '#5F6B64',
-  chip: '#EEF1EC',
-};
+
+import { useAppColors, useThemedStyles } from '@/hooks/use-app-colors';
+import type { AppPalette } from '@/constants/theme';
 
 export default function OfflineScreen() {
+  const colors = useAppColors();
+  const styles = useThemedStyles(makeStyles);
   const router = useRouter();
 
   return (
     <SafeAreaView style={styles.screen}>
       <View style={styles.content}>
         <View style={styles.iconCircle}>
-          <Ionicons name="cloud-offline-outline" size={34} color={colors.dark} />
+          <Ionicons name="cloud-offline-outline" size={34} color={colors.primaryText} />
         </View>
         <Text style={styles.label}>You are offline</Text>
         <Text style={styles.title}>No internet connection</Text>
@@ -36,7 +34,7 @@ export default function OfflineScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: AppPalette) => StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.background },
   content: {
     flex: 1,
@@ -56,11 +54,11 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
     marginBottom: 20,
   },
-  label: { fontSize: 14, color: colors.muted, textAlign: 'center' },
+  label: { fontSize: 14, color: colors.textSecondary, textAlign: 'center' },
   title: { fontSize: 26, fontWeight: '800', color: colors.text, textAlign: 'center', marginTop: 4 },
   body: {
     fontSize: 15,
-    color: colors.muted,
+    color: colors.textSecondary,
     textAlign: 'center',
     lineHeight: 22,
     marginTop: 8,
@@ -68,20 +66,20 @@ const styles = StyleSheet.create({
   },
   primaryButton: {
     height: 54,
-    backgroundColor: colors.dark,
+    backgroundColor: colors.primary,
     borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 14,
   },
-  primaryText: { fontSize: 16, fontWeight: '700', color: '#FFFFFF' },
+  primaryText: { fontSize: 16, fontWeight: '700', color: colors.onPrimary },
   outlineButton: {
     height: 54,
     borderWidth: 1,
-    borderColor: colors.dark,
+    borderColor: colors.primary,
     borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  outlineText: { fontSize: 16, fontWeight: '700', color: colors.dark },
+  outlineText: { fontSize: 16, fontWeight: '700', color: colors.primaryText },
 });

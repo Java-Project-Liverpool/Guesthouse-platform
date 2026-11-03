@@ -16,18 +16,9 @@ import FilterSheet, { countActiveFilters, defaultFilters, type Filters } from '@
 import StayImage from '@/components/stay-image';
 import { useStays } from '@/data/stays';
 
-const colors = {
-  background: '#F7F5F0',
-  card: '#FFFFFF',
-  dark: '#14352A',
-  text: '#15201A',
-  muted: '#5F6B64',
-  border: '#C8CEC8',
-  cardBorder: '#E1E5E0',
-  chip: '#EEF1EC',
-  star: '#B7650A',
-  badge: '#C9822B',
-};
+
+import { useAppColors, useThemedStyles } from '@/hooks/use-app-colors';
+import type { AppPalette } from '@/constants/theme';
 
 const sortOptions = [
   { key: 'cheapest', label: 'Cheapest first' },
@@ -39,6 +30,8 @@ function formatPrice(price: number) {
 }
 
 export default function SearchScreen() {
+  const colors = useAppColors();
+  const styles = useThemedStyles(makeStyles);
   const router = useRouter();
   const { q, filter } = useLocalSearchParams<{ q?: string; filter?: string }>();
   const { stays, loading, error, retry } = useStays();
@@ -102,7 +95,7 @@ export default function SearchScreen() {
               <TextInput
                 style={styles.searchInput}
                 placeholder="Search by name or location"
-                placeholderTextColor={colors.muted}
+                placeholderTextColor={colors.placeholder}
                 value={query}
                 onChangeText={setQuery}
                 onSubmitEditing={() => search(query)}
@@ -125,7 +118,7 @@ export default function SearchScreen() {
             ))}
           </View>
           {!loading && !cities.length && <Text style={styles.emptyText}>Locations will appear here when guesthouses are listed.</Text>}
-          {loading && <ActivityIndicator color={colors.dark} />}
+          {loading && <ActivityIndicator color={colors.primaryText} />}
           {error && <><Text style={styles.emptyText}>{error}</Text><Pressable onPress={retry}><Text style={styles.clear}>Try again</Text></Pressable></>}
         </ScrollView>
       </SafeAreaView>
@@ -138,7 +131,7 @@ export default function SearchScreen() {
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
         <View style={styles.resultsHeader}>
           <Pressable style={styles.backButton} onPress={goBack}>
-            <Ionicons name="chevron-back" size={22} color={colors.dark} />
+            <Ionicons name="chevron-back" size={22} color={colors.primaryText} />
           </Pressable>
           <Text style={styles.resultsTitle}>Results</Text>
           <View style={styles.backButtonSpace} />
@@ -150,14 +143,14 @@ export default function SearchScreen() {
             <TextInput
               style={styles.searchInput}
               placeholder="Search by name or location"
-              placeholderTextColor={colors.muted}
+              placeholderTextColor={colors.placeholder}
               value={query}
               onChangeText={setQuery}
               returnKeyType="search"
             />
           </View>
           <Pressable style={styles.filterButton} onPress={() => setSheetOpen(true)}>
-            <Ionicons name="filter-outline" size={22} color="#FFFFFF" />
+            <Ionicons name="filter-outline" size={22} color={colors.onPrimary} />
             {activeFilters > 0 && <View style={styles.filterDot} />}
           </Pressable>
         </View>
@@ -175,7 +168,7 @@ export default function SearchScreen() {
           ))}
         </View>
 
-        {loading && <ActivityIndicator color={colors.dark} />}
+        {loading && <ActivityIndicator color={colors.primaryText} />}
 
         {!loading && results.length > 0 && <Text style={styles.count}>{countText}</Text>}
 
@@ -206,7 +199,7 @@ export default function SearchScreen() {
                 {stay.price !== undefined && <Text style={styles.resultPrice}>{formatPrice(stay.price)}</Text>}
                 {stay.rating !== undefined && (
                   <View style={styles.rating}>
-                    <Ionicons name="star" size={14} color={colors.star} />
+                    <Ionicons name="star" size={14} color={colors.secondary} />
                     <Text style={styles.ratingText}>{stay.rating.toFixed(1)}</Text>
                   </View>
                 )}
@@ -232,7 +225,7 @@ export default function SearchScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: AppPalette) => StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.background },
   content: {
     width: '100%',
@@ -251,7 +244,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 10,
     height: 54,
-    backgroundColor: colors.card,
+    backgroundColor: colors.surface,
     borderWidth: 1,
     borderColor: colors.border,
     borderRadius: 16,
@@ -263,7 +256,7 @@ const styles = StyleSheet.create({
     width: 54,
     height: 54,
     borderRadius: 16,
-    backgroundColor: colors.dark,
+    backgroundColor: colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -274,7 +267,7 @@ const styles = StyleSheet.create({
     width: 10,
     height: 10,
     borderRadius: 5,
-    backgroundColor: colors.badge,
+    backgroundColor: colors.warning,
   },
 
   // Search view
@@ -285,7 +278,7 @@ const styles = StyleSheet.create({
     marginBottom: 6,
   },
   sectionTitle: { fontSize: 18, fontWeight: '800', color: colors.text },
-  clear: { fontSize: 14, fontWeight: '700', color: colors.muted },
+  clear: { fontSize: 14, fontWeight: '700', color: colors.textSecondary },
   recentRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -340,10 +333,10 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderRadius: 13,
   },
-  sortOptionActive: { backgroundColor: colors.dark },
+  sortOptionActive: { backgroundColor: colors.primary },
   sortText: { fontSize: 14, fontWeight: '700', color: colors.text },
-  sortTextActive: { color: '#FFFFFF' },
-  count: { fontSize: 14, color: colors.muted, marginBottom: 14 },
+  sortTextActive: { color: colors.onPrimary },
+  count: { fontSize: 14, color: colors.textSecondary, marginBottom: 14 },
 
   // Result cards
   resultCard: {
@@ -351,34 +344,34 @@ const styles = StyleSheet.create({
     gap: 14,
     padding: 12,
     marginBottom: 14,
-    backgroundColor: colors.card,
+    backgroundColor: colors.surface,
     borderWidth: 1,
-    borderColor: colors.cardBorder,
+    borderColor: colors.divider,
     borderRadius: 20,
   },
   thumb: { width: 100, height: 100, borderRadius: 14, overflow: 'hidden' },
   thumbImage: { ...StyleSheet.absoluteFill },
   resultInfo: { flex: 1, justifyContent: 'center' },
   resultName: { fontSize: 17, fontWeight: '800', color: colors.text, marginBottom: 2 },
-  resultCity: { fontSize: 14, color: colors.muted, marginBottom: 4 },
+  resultCity: { fontSize: 14, color: colors.textSecondary, marginBottom: 4 },
   priceRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   resultPrice: { fontSize: 17, fontWeight: '800', color: colors.text },
   rating: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  ratingText: { fontSize: 14, fontWeight: '800', color: colors.star },
+  ratingText: { fontSize: 14, fontWeight: '800', color: colors.secondary },
 
   // No results
   empty: { alignItems: 'center', paddingVertical: 48, gap: 6 },
   emptyTitle: { fontSize: 18, fontWeight: '800', color: colors.text },
-  emptyText: { fontSize: 15, color: colors.muted },
+  emptyText: { fontSize: 15, color: colors.textSecondary },
   clearButton: {
     height: 48,
     paddingHorizontal: 28,
     marginTop: 16,
     borderWidth: 1,
-    borderColor: colors.dark,
+    borderColor: colors.primary,
     borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  clearButtonText: { fontSize: 15, fontWeight: '700', color: colors.dark },
+  clearButtonText: { fontSize: 15, fontWeight: '700', color: colors.primaryText },
 });

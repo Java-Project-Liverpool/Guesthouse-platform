@@ -1,12 +1,9 @@
 import { useState } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
-const colors = {
-  dark: '#14352A',
-  text: '#15201A',
-  muted: '#5F6B64',
-  chip: '#EEF1EC',
-};
+
+import { useThemedStyles } from '@/hooks/use-app-colors';
+import type { AppPalette } from '@/constants/theme';
 
 export type Filters = {
   sort: 'cheapest' | 'expensive' | 'rated';
@@ -65,6 +62,7 @@ type Props = {
 // Bottom sheet with the sort and filter options. Mount it only while it is open,
 // so it always starts from the current filters.
 export default function FilterSheet({ filters, cities, amenities, onApply, onClose }: Props) {
+  const styles = useThemedStyles(makeStyles);
   const [draft, setDraft] = useState(filters);
 
   const toggleAmenity = (name: string) =>
@@ -175,8 +173,8 @@ export default function FilterSheet({ filters, cities, amenities, onApply, onClo
   );
 }
 
-const styles = StyleSheet.create({
-  overlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(21, 32, 26, 0.55)' },
+const makeStyles = (colors: AppPalette) => StyleSheet.create({
+  overlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: colors.overlay },
   sheet: {
     width: '100%',
     maxWidth: 480,
@@ -184,7 +182,7 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
     padding: 20,
     paddingBottom: 28,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.surface,
     borderTopLeftRadius: 28,
     borderTopRightRadius: 28,
   },
@@ -195,9 +193,9 @@ const styles = StyleSheet.create({
     marginBottom: 14,
   },
   title: { fontSize: 22, fontWeight: '800', color: colors.text },
-  reset: { fontSize: 15, fontWeight: '800', color: colors.muted },
+  reset: { fontSize: 15, fontWeight: '800', color: colors.textSecondary },
   body: { flexGrow: 0 },
-  label: { fontSize: 16, fontWeight: '800', color: colors.muted, marginTop: 8, marginBottom: 10 },
+  label: { fontSize: 16, fontWeight: '800', color: colors.textSecondary, marginTop: 8, marginBottom: 10 },
 
   // Sort by
   sortTrack: {
@@ -215,9 +213,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderRadius: 13,
   },
-  sortOptionActive: { backgroundColor: colors.dark },
+  sortOptionActive: { backgroundColor: colors.primary },
   sortText: { fontSize: 14, fontWeight: '800', color: colors.text, textAlign: 'center' },
-  activeText: { color: '#FFFFFF' },
+  activeText: { color: colors.onPrimary },
 
   // Chips
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 14 },
@@ -229,7 +227,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  chipActive: { backgroundColor: colors.dark },
+  chipActive: { backgroundColor: colors.primary },
   chipText: { fontSize: 14, fontWeight: '800', color: colors.text },
 
   // Show results
@@ -237,9 +235,9 @@ const styles = StyleSheet.create({
     height: 56,
     marginTop: 12,
     borderRadius: 18,
-    backgroundColor: colors.dark,
+    backgroundColor: colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  applyText: { fontSize: 17, fontWeight: '800', color: '#FFFFFF' },
+  applyText: { fontSize: 17, fontWeight: '800', color: colors.onPrimary },
 });

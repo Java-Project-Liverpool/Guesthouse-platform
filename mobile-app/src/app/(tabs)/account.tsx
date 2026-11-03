@@ -8,16 +8,9 @@ import { logout, useAuth } from '@/data/auth';
 import { useFavourites } from '@/data/favourites';
 import { useTabBarPadding } from '@/hooks/use-tab-bar-padding';
 
-const colors = {
-  background: '#F7F5F0',
-  card: '#FFFFFF',
-  dark: '#14352A',
-  text: '#15201A',
-  muted: '#5F6B64',
-  border: '#E1E5E0',
-  chip: '#EEF1EC',
-  danger: '#B3261E',
-};
+
+import { useAppColors, useThemedStyles } from '@/hooks/use-app-colors';
+import type { AppPalette } from '@/constants/theme';
 
 type RowProps = {
   label: string;
@@ -27,18 +20,22 @@ type RowProps = {
 };
 
 function Row({ label, value, onPress, last }: RowProps) {
+  const colors = useAppColors();
+  const styles = useThemedStyles(makeStyles);
   return (
     <Pressable style={[styles.row, !last && styles.rowDivider]} onPress={onPress}>
       <Text style={styles.rowText}>{label}</Text>
       <View style={styles.rowRight}>
         {value !== undefined && <Text style={styles.rowValue}>{value}</Text>}
-        <Ionicons name="chevron-forward" size={18} color={colors.muted} />
+        <Ionicons name="chevron-forward" size={18} color={colors.textSecondary} />
       </View>
     </Pressable>
   );
 }
 
 export default function AccountScreen() {
+  const colors = useAppColors();
+  const styles = useThemedStyles(makeStyles);
   const router = useRouter();
   const tabBarPadding = useTabBarPadding();
   const { user, restoring } = useAuth();
@@ -51,7 +48,7 @@ export default function AccountScreen() {
     router.replace('/');
   };
 
-  if (restoring) return <SafeAreaView style={styles.screen}><ActivityIndicator size="large" color={colors.dark} /></SafeAreaView>;
+  if (restoring) return <SafeAreaView style={styles.screen}><ActivityIndicator size="large" color={colors.primaryText} /></SafeAreaView>;
 
   // Guest view: browsing works without an account, so explain what an account adds
   if (!user) {
@@ -62,7 +59,7 @@ export default function AccountScreen() {
 
           <View style={[styles.card, styles.guestCard]}>
             <View style={styles.iconTile}>
-              <Ionicons name="person-outline" size={24} color={colors.dark} />
+              <Ionicons name="person-outline" size={24} color={colors.primaryText} />
             </View>
             <Text style={styles.cardTitle}>You are browsing as a guest</Text>
             <Text style={styles.cardBody}>
@@ -140,7 +137,7 @@ export default function AccountScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: AppPalette) => StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.background },
   content: {
     width: '100%',
@@ -153,9 +150,9 @@ const styles = StyleSheet.create({
   title: { fontSize: 28, fontWeight: '800', color: colors.text, marginBottom: 24 },
 
   card: {
-    backgroundColor: colors.card,
+    backgroundColor: colors.surface,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: colors.divider,
     borderRadius: 20,
     marginBottom: 20,
   },
@@ -172,7 +169,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   cardTitle: { fontSize: 18, fontWeight: '800', color: colors.text, marginBottom: 6 },
-  cardBody: { fontSize: 15, color: colors.muted, lineHeight: 22 },
+  cardBody: { fontSize: 15, color: colors.textSecondary, lineHeight: 22 },
 
   // Profile
   profile: { flexDirection: 'row', alignItems: 'center', padding: 20 },
@@ -185,10 +182,10 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginRight: 16,
   },
-  avatarText: { fontSize: 18, fontWeight: '800', color: colors.dark },
+  avatarText: { fontSize: 18, fontWeight: '800', color: colors.primaryText },
   profileText: { flex: 1 },
   name: { fontSize: 18, fontWeight: '800', color: colors.text },
-  email: { fontSize: 14, color: colors.muted, marginTop: 2 },
+  email: { fontSize: 14, color: colors.textSecondary, marginTop: 2 },
 
   // Link rows
   list: { paddingHorizontal: 20 },
@@ -198,37 +195,37 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
   },
-  rowDivider: { borderBottomWidth: 1, borderBottomColor: colors.border },
+  rowDivider: { borderBottomWidth: 1, borderBottomColor: colors.divider },
   rowText: { fontSize: 16, fontWeight: '700', color: colors.text },
   rowRight: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  rowValue: { fontSize: 15, fontWeight: '700', color: colors.muted },
+  rowValue: { fontSize: 15, fontWeight: '700', color: colors.textSecondary },
 
   // Buttons
   primaryButton: {
     height: 54,
-    backgroundColor: colors.dark,
+    backgroundColor: colors.primary,
     borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  primaryText: { fontSize: 16, fontWeight: '700', color: '#FFFFFF' },
+  primaryText: { fontSize: 16, fontWeight: '700', color: colors.onPrimary },
   logoutButton: {
     height: 54,
     borderWidth: 1,
-    borderColor: colors.dark,
+    borderColor: colors.primary,
     borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  logoutText: { fontSize: 16, fontWeight: '700', color: colors.dark },
-  modalBackdrop: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', alignItems: 'center', justifyContent: 'center', padding: 24 },
-  modal: { backgroundColor: colors.card, borderRadius: 20, padding: 24, width: '100%', maxWidth: 360 },
+  logoutText: { fontSize: 16, fontWeight: '700', color: colors.primaryText },
+  modalBackdrop: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: colors.overlay, alignItems: 'center', justifyContent: 'center', padding: 24 },
+  modal: { backgroundColor: colors.surface, borderRadius: 20, padding: 24, width: '100%', maxWidth: 360 },
   modalHeader: { marginBottom: 12 },
   modalTitle: { fontSize: 20, fontWeight: '800', color: colors.text },
-  modalBody: { fontSize: 15, color: colors.muted, lineHeight: 22, marginBottom: 20 },
+  modalBody: { fontSize: 15, color: colors.textSecondary, lineHeight: 22, marginBottom: 20 },
   modalActions: { flexDirection: 'row', justifyContent: 'flex-end', gap: 12 },
-  modalCancel: { paddingVertical: 10, paddingHorizontal: 18, borderRadius: 999, borderWidth: 1, borderColor: colors.border },
-  modalCancelText: { fontSize: 15, fontWeight: '700', color: colors.muted },
-  modalConfirm: { paddingVertical: 10, paddingHorizontal: 18, borderRadius: 999, backgroundColor: colors.danger },
-  modalConfirmText: { fontSize: 15, fontWeight: '700', color: '#FFFFFF' },
+  modalCancel: { paddingVertical: 10, paddingHorizontal: 18, borderRadius: 999, borderWidth: 1, borderColor: colors.divider },
+  modalCancelText: { fontSize: 15, fontWeight: '700', color: colors.textSecondary },
+  modalConfirm: { paddingVertical: 10, paddingHorizontal: 18, borderRadius: 999, backgroundColor: colors.error },
+  modalConfirmText: { fontSize: 15, fontWeight: '700', color: colors.onPrimary },
 });

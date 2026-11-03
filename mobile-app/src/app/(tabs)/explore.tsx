@@ -17,14 +17,18 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import FilterSheet, { countActiveFilters, defaultFilters, type Filters } from '@/components/filter-sheet';
 import GuesthouseCard from '@/components/guesthouse-card';
 import LoginPrompt from '@/components/login-prompt';
-import { Colors, Radii, Typography } from '@/constants/theme';
+import { Radii, Typography, type AppPalette } from '@/constants/theme';
 import { MAX_COMPARE_STAYS, toggleCompareStay, useComparison } from '@/data/comparison';
 import { useAuth } from '@/data/auth';
 import { useFavourites } from '@/data/favourites';
 import { useStays, type Stay } from '@/data/stays';
 import { useTabBarPadding } from '@/hooks/use-tab-bar-padding';
 
+import { useAppColors, useThemedStyles } from '@/hooks/use-app-colors';
+
 export default function ExploreScreen() {
+  const colors = useAppColors();
+  const styles = useThemedStyles(makeStyles);
   const router = useRouter();
   const { q, city: cityParam, filter } = useLocalSearchParams<{ q?: string; city?: string; filter?: string }>();
   const queryParam = typeof q === 'string' ? q : undefined;
@@ -137,25 +141,25 @@ export default function ExploreScreen() {
             accessibilityRole="button"
             accessibilityLabel="Open account"
             style={({ pressed }) => [styles.accountButton, pressed && styles.pressed]}>
-            <Ionicons name="person-outline" size={19} color={Colors.light.primary} />
+            <Ionicons name="person-outline" size={19} color={colors.primaryText} />
           </Pressable>
         </View>
 
         <View style={styles.searchRow}>
           <View style={styles.searchField}>
-            <Ionicons name="search-outline" size={20} color={Colors.light.textSecondary} />
+            <Ionicons name="search-outline" size={20} color={colors.textSecondary} />
             <TextInput
               value={query}
               onChangeText={(value) => setQueryOverride({ source: queryParam, value })}
               placeholder="Name, city or location"
-              placeholderTextColor={Colors.light.textSecondary}
+              placeholderTextColor={colors.placeholder}
               accessibilityLabel="Search guesthouses by name or location"
               returnKeyType="search"
               style={styles.searchInput}
             />
             {query.length > 0 ? (
               <Pressable onPress={() => setQueryOverride({ source: queryParam, value: '' })} accessibilityRole="button" accessibilityLabel="Clear search">
-                <Ionicons name="close-circle" size={19} color={Colors.light.textSecondary} />
+                <Ionicons name="close-circle" size={19} color={colors.textSecondary} />
               </Pressable>
             ) : null}
           </View>
@@ -164,7 +168,7 @@ export default function ExploreScreen() {
             accessibilityRole="button"
             accessibilityLabel={activeFilters ? `Filters, ${activeFilters} applied` : 'Open filters'}
             style={({ pressed }) => [styles.filterButton, pressed && styles.pressed]}>
-            <Ionicons name="options-outline" size={20} color="#FFFFFF" />
+            <Ionicons name="options-outline" size={20} color={colors.onPrimary} />
             {activeFilters > 0 ? <View style={styles.filterDot} /> : null}
           </Pressable>
         </View>
@@ -174,7 +178,7 @@ export default function ExploreScreen() {
             {selectedCity !== 'All' ? (
               <Pressable onPress={clearCity} style={styles.activeChip} accessibilityRole="button" accessibilityLabel={`Remove ${selectedCity} filter`}>
                 <Text style={styles.activeChipText}>{selectedCity}</Text>
-                <Ionicons name="close" size={14} color={Colors.light.primary} />
+                <Ionicons name="close" size={14} color={colors.primaryText} />
               </Pressable>
             ) : null}
             {activeFilters > 0 ? (
@@ -192,22 +196,22 @@ export default function ExploreScreen() {
 
         {compareStays.length > 0 ? (
           <Pressable onPress={() => router.push('/compare')} accessibilityRole="button" style={({ pressed }) => [styles.compareBar, pressed && styles.pressed]}>
-            <Ionicons name="git-compare-outline" size={18} color="#FFFFFF" />
+            <Ionicons name="git-compare-outline" size={18} color={colors.onPrimary} />
             <Text style={styles.compareBarText}>Compare {compareStays.length} selected</Text>
-            <Ionicons name="chevron-forward" size={16} color="#FFFFFF" />
+            <Ionicons name="chevron-forward" size={16} color={colors.onPrimary} />
           </Pressable>
         ) : null}
 
         {loading ? (
           <View style={styles.loadingState}>
-            <ActivityIndicator color={Colors.light.primary} />
+            <ActivityIndicator color={colors.primaryText} />
             <Text style={styles.stateCopy}>Loading guesthouses from the live directory…</Text>
           </View>
         ) : null}
 
         {error && !loading ? (
           <View style={styles.stateCard}>
-            <Ionicons name="cloud-offline-outline" size={27} color={Colors.light.primary} />
+            <Ionicons name="cloud-offline-outline" size={27} color={colors.primaryText} />
             <Text style={styles.stateTitle}>We couldn’t load guesthouses</Text>
             <Text style={styles.stateCopy}>{error}</Text>
             <Pressable onPress={retry} style={styles.primaryButton} accessibilityRole="button">
@@ -219,7 +223,7 @@ export default function ExploreScreen() {
         {!loading && !error && results.length === 0 ? (
           <View style={styles.stateCard}>
             <View style={styles.emptyIcon}>
-              <Ionicons name="search-outline" size={24} color={Colors.light.primary} />
+              <Ionicons name="search-outline" size={24} color={colors.primaryText} />
             </View>
             <Text style={styles.stateTitle}>{stays.length === 0 ? 'No stays listed yet' : 'No matching stays'}</Text>
             <Text style={styles.stateCopy}>
@@ -267,35 +271,35 @@ export default function ExploreScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: Colors.light.background },
+const makeStyles = (colors: AppPalette) => StyleSheet.create({
+  screen: { flex: 1, backgroundColor: colors.background },
   content: { width: '100%', maxWidth: 560, alignSelf: 'center', paddingHorizontal: 18, paddingTop: 10 },
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 },
-  eyebrow: { ...Typography.metadata, letterSpacing: 2, color: Colors.light.primary, fontWeight: '700' },
-  title: { ...Typography.screenTitle, color: Colors.light.text, marginTop: 4, letterSpacing: -0.5 },
-  subtitle: { ...Typography.supporting, color: Colors.light.textSecondary, marginTop: 6, lineHeight: 22 },
-  accountButton: { width: 42, height: 42, borderRadius: 21, borderWidth: 1, borderColor: Colors.light.border, backgroundColor: '#FFFFFF', alignItems: 'center', justifyContent: 'center' },
+  eyebrow: { ...Typography.metadata, letterSpacing: 2, color: colors.primaryText, fontWeight: '700' },
+  title: { ...Typography.screenTitle, color: colors.text, marginTop: 4, letterSpacing: -0.5 },
+  subtitle: { ...Typography.supporting, color: colors.textSecondary, marginTop: 6, lineHeight: 22 },
+  accountButton: { width: 42, height: 42, borderRadius: 21, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface, alignItems: 'center', justifyContent: 'center' },
   searchRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  searchField: { minHeight: 52, flex: 1, flexDirection: 'row', alignItems: 'center', gap: 9, paddingHorizontal: 14, borderRadius: Radii.control, backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: Colors.light.border },
-  searchInput: { flex: 1, minWidth: 0, paddingVertical: 10, color: Colors.light.text, ...Typography.body },
-  filterButton: { width: 52, height: 52, alignItems: 'center', justifyContent: 'center', borderRadius: Radii.control, backgroundColor: Colors.light.primary },
-  filterDot: { position: 'absolute', top: 10, right: 10, width: 8, height: 8, borderRadius: 4, backgroundColor: '#DFA36F' },
+  searchField: { minHeight: 52, flex: 1, flexDirection: 'row', alignItems: 'center', gap: 9, paddingHorizontal: 14, borderRadius: Radii.control, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border },
+  searchInput: { flex: 1, minWidth: 0, paddingVertical: 10, color: colors.text, ...Typography.body },
+  filterButton: { width: 52, height: 52, alignItems: 'center', justifyContent: 'center', borderRadius: Radii.control, backgroundColor: colors.primary },
+  filterDot: { position: 'absolute', top: 10, right: 10, width: 8, height: 8, borderRadius: 4, backgroundColor: colors.secondary },
   activeFilterRow: { minHeight: 40, flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 10 },
-  activeChip: { minHeight: 32, flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 11, borderRadius: Radii.pill, backgroundColor: '#E6ECE5' },
-  activeChipText: { ...Typography.metadata, color: Colors.light.primary },
-  clearText: { ...Typography.metadata, color: Colors.light.textSecondary, textDecorationLine: 'underline' },
+  activeChip: { minHeight: 32, flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 11, borderRadius: Radii.pill, backgroundColor: colors.chip },
+  activeChipText: { ...Typography.metadata, color: colors.primaryText },
+  clearText: { ...Typography.metadata, color: colors.textSecondary, textDecorationLine: 'underline' },
   resultsHeading: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', marginTop: 25, marginBottom: 14 },
-  resultsTitle: { ...Typography.section, color: Colors.light.text },
-  resultsContext: { ...Typography.metadata, color: Colors.light.textSecondary },
+  resultsTitle: { ...Typography.section, color: colors.text },
+  resultsContext: { ...Typography.metadata, color: colors.textSecondary },
   loadingState: { minHeight: 220, alignItems: 'center', justifyContent: 'center', gap: 12 },
-  stateCard: { alignItems: 'center', paddingHorizontal: 20, paddingVertical: 36, borderRadius: 20, backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: Colors.light.border },
-  emptyIcon: { width: 48, height: 48, borderRadius: 16, alignItems: 'center', justifyContent: 'center', backgroundColor: '#E8EFE8', marginBottom: 12 },
-  stateTitle: { ...Typography.cardTitle, textAlign: 'center', color: Colors.light.text },
-  stateCopy: { ...Typography.supporting, textAlign: 'center', color: Colors.light.textSecondary, marginTop: 7 },
-  primaryButton: { minHeight: 46, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 18, marginTop: 17, borderRadius: Radii.pill, backgroundColor: Colors.light.primary },
-  primaryButtonText: { ...Typography.supporting, fontWeight: '600', color: '#FFFFFF' },
-  actionError: { ...Typography.supporting, color: '#A13E37', marginTop: 8 },
-  compareBar: { minHeight: 48, flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 16, borderRadius: Radii.control, backgroundColor: Colors.light.primary, marginBottom: 14 },
-  compareBarText: { flex: 1, ...Typography.supporting, fontWeight: '700', color: '#FFFFFF' },
+  stateCard: { alignItems: 'center', paddingHorizontal: 20, paddingVertical: 36, borderRadius: 20, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border },
+  emptyIcon: { width: 48, height: 48, borderRadius: 16, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.chip, marginBottom: 12 },
+  stateTitle: { ...Typography.cardTitle, textAlign: 'center', color: colors.text },
+  stateCopy: { ...Typography.supporting, textAlign: 'center', color: colors.textSecondary, marginTop: 7 },
+  primaryButton: { minHeight: 46, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 18, marginTop: 17, borderRadius: Radii.pill, backgroundColor: colors.primary },
+  primaryButtonText: { ...Typography.supporting, fontWeight: '600', color: colors.onPrimary },
+  actionError: { ...Typography.supporting, color: colors.error, marginTop: 8 },
+  compareBar: { minHeight: 48, flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 16, borderRadius: Radii.control, backgroundColor: colors.primary, marginBottom: 14 },
+  compareBarText: { flex: 1, ...Typography.supporting, fontWeight: '700', color: colors.onPrimary },
   pressed: { opacity: 0.82 },
 });

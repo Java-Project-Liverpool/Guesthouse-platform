@@ -6,18 +6,13 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { updateProfile, useAuth } from '@/data/auth';
 
-const colors = {
-  background: '#F7F5F0',
-  card: '#FFFFFF',
-  dark: '#14352A',
-  text: '#15201A',
-  muted: '#5F6B64',
-  border: '#C8CEC8',
-  chip: '#EEF1EC',
-  danger: '#B3261E',
-};
+
+import { useAppColors, useThemedStyles } from '@/hooks/use-app-colors';
+import type { AppPalette } from '@/constants/theme';
 
 export default function EditProfileScreen() {
+  const colors = useAppColors();
+  const styles = useThemedStyles(makeStyles);
   const router = useRouter();
   const { user, restoring } = useAuth();
   const [name, setName] = useState(user?.name ?? '');
@@ -25,7 +20,7 @@ export default function EditProfileScreen() {
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
 
-  if (restoring) return <SafeAreaView style={styles.screen}><ActivityIndicator size="large" color={colors.dark} /></SafeAreaView>;
+  if (restoring) return <SafeAreaView style={styles.screen}><ActivityIndicator size="large" color={colors.primaryText} /></SafeAreaView>;
 
   // Only logged-in customers can edit a profile
   if (!user) return <Redirect href="/login" />;
@@ -55,7 +50,7 @@ export default function EditProfileScreen() {
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
         <View style={styles.header}>
           <Pressable style={styles.backButton} onPress={() => router.back()}>
-            <Ionicons name="chevron-back" size={22} color={colors.dark} />
+            <Ionicons name="chevron-back" size={22} color={colors.primaryText} />
           </Pressable>
           <Text style={styles.headerTitle}>Edit profile</Text>
           <View style={styles.backButtonSpace} />
@@ -73,7 +68,7 @@ export default function EditProfileScreen() {
         <TextInput
           style={styles.input}
           placeholder="Your name"
-          placeholderTextColor={colors.muted}
+          placeholderTextColor={colors.placeholder}
           value={name}
           onChangeText={setName}
         />
@@ -82,7 +77,7 @@ export default function EditProfileScreen() {
         <TextInput
           style={styles.input}
           placeholder="you@example.com"
-          placeholderTextColor={colors.muted}
+          placeholderTextColor={colors.placeholder}
           keyboardType="email-address"
           autoCapitalize="none"
           value={email}
@@ -92,14 +87,14 @@ export default function EditProfileScreen() {
         {error !== '' && <Text style={styles.error}>{error}</Text>}
 
         <Pressable style={styles.primaryButton} onPress={() => void save()} disabled={busy}>
-          {busy ? <ActivityIndicator color="#FFFFFF" /> : <Text style={styles.primaryText}>Save changes</Text>}
+          {busy ? <ActivityIndicator color={colors.onPrimary} /> : <Text style={styles.primaryText}>Save changes</Text>}
         </Pressable>
       </ScrollView>
     </SafeAreaView>
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: AppPalette) => StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.background },
   content: {
     width: '100%',
@@ -137,13 +132,13 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginBottom: 12,
   },
-  avatarText: { fontSize: 28, fontWeight: '800', color: colors.dark },
-  changePhoto: { fontSize: 15, fontWeight: '700', color: colors.dark },
+  avatarText: { fontSize: 28, fontWeight: '800', color: colors.primaryText },
+  changePhoto: { fontSize: 15, fontWeight: '700', color: colors.primaryText },
 
-  label: { fontSize: 14, fontWeight: '600', color: colors.muted, marginBottom: 8 },
+  label: { fontSize: 14, fontWeight: '600', color: colors.textSecondary, marginBottom: 8 },
   input: {
     height: 54,
-    backgroundColor: colors.card,
+    backgroundColor: colors.surface,
     borderWidth: 1,
     borderColor: colors.border,
     borderRadius: 14,
@@ -152,14 +147,14 @@ const styles = StyleSheet.create({
     color: colors.text,
     marginBottom: 22,
   },
-  error: { fontSize: 14, color: colors.danger, marginBottom: 16 },
+  error: { fontSize: 14, color: colors.error, marginBottom: 16 },
 
   primaryButton: {
     height: 54,
-    backgroundColor: colors.dark,
+    backgroundColor: colors.primary,
     borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  primaryText: { fontSize: 16, fontWeight: '700', color: '#FFFFFF' },
+  primaryText: { fontSize: 16, fontWeight: '700', color: colors.onPrimary },
 });

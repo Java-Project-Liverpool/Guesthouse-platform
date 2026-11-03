@@ -9,14 +9,10 @@ import {
 import { usePathname } from 'expo-router';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { MaxContentWidth, Spacing } from '@/constants/theme';
+import { MaxContentWidth, Spacing, type AppPalette } from '@/constants/theme';
 
-const colors = {
-  bar: '#14352A',
-  activePill: '#FFFFFF',
-  activeText: '#14352A',
-  inactiveText: '#D5DED8',
-};
+
+import { useThemedStyles } from '@/hooks/use-app-colors';
 
 // The bar only shows on the three main tabs
 const TAB_PATHS = ['/', '/explore', '/favourites', '/account'];
@@ -46,6 +42,7 @@ export default function AppTabs() {
 }
 
 export function TabButton({ children, isFocused, ...props }: TabTriggerSlotProps) {
+  const styles = useThemedStyles(makeStyles);
   const { ref: _ref, ...pressableProps } = props as any;
   return (
     <Pressable {...pressableProps} style={({ pressed }) => pressed && styles.pressed}>
@@ -57,6 +54,7 @@ export function TabButton({ children, isFocused, ...props }: TabTriggerSlotProps
 }
 
 export function CustomTabList(props: TabListProps) {
+  const styles = useThemedStyles(makeStyles);
   const pathname = usePathname();
   // Hide the bar on screens that are not tabs
   const hideBar = !TAB_PATHS.includes(pathname);
@@ -70,7 +68,7 @@ export function CustomTabList(props: TabListProps) {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: AppPalette) => StyleSheet.create({
   tabListContainer: {
     position: 'absolute',
     width: '100%',
@@ -83,7 +81,7 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.two,
     paddingHorizontal: Spacing.three,
     borderRadius: Spacing.five,
-    backgroundColor: colors.bar,
+    backgroundColor: colors.primary,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-around',
@@ -100,8 +98,8 @@ const styles = StyleSheet.create({
     borderRadius: Spacing.five,
   },
   tabButtonActive: {
-    backgroundColor: colors.activePill,
+    backgroundColor: colors.surface,
   },
-  tabText: { fontSize: 14, fontWeight: '700', color: colors.inactiveText },
-  tabTextActive: { color: colors.activeText },
+  tabText: { fontSize: 14, fontWeight: '700', color: colors.border },
+  tabTextActive: { color: colors.primaryText },
 });

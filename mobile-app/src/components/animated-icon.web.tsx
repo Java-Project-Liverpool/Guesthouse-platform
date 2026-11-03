@@ -3,6 +3,9 @@ import { StyleSheet, View } from 'react-native';
 import Animated, { Keyframe, Easing } from 'react-native-reanimated';
 
 import classes from './animated-icon.module.css';
+import { useThemedStyles } from '@/hooks/use-app-colors';
+import type { AppPalette } from '@/constants/theme';
+
 const DURATION = 300;
 
 export function AnimatedSplashOverlay() {
@@ -55,6 +58,7 @@ const glowKeyframe = new Keyframe({
 });
 
 export function AnimatedIcon() {
+  const styles = useThemedStyles(makeStyles);
   return (
     <View style={styles.iconContainer}>
       <Animated.View entering={glowKeyframe.duration(60 * 1000 * 4)} style={styles.glow}>
@@ -72,7 +76,7 @@ export function AnimatedIcon() {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: AppPalette) => StyleSheet.create({
   container: {
     alignItems: 'center',
     width: '100%',

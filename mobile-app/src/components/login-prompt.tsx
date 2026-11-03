@@ -2,13 +2,9 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 
-const colors = {
-  card: '#FFFFFF',
-  dark: '#14352A',
-  text: '#15201A',
-  muted: '#5F6B64',
-  chip: '#EEF1EC',
-};
+
+import { useAppColors, useThemedStyles } from '@/hooks/use-app-colors';
+import type { AppPalette } from '@/constants/theme';
 
 type Props = {
   visible: boolean;
@@ -17,6 +13,8 @@ type Props = {
 
 // Bottom sheet shown when a guest tries to save a stay or write a review
 export default function LoginPrompt({ visible, onClose }: Props) {
+  const colors = useAppColors();
+  const styles = useThemedStyles(makeStyles);
   const router = useRouter();
 
   const goToLogin = () => {
@@ -30,7 +28,7 @@ export default function LoginPrompt({ visible, onClose }: Props) {
         {/* Inner pressable stops taps on the sheet from closing it */}
         <Pressable style={styles.sheet} onPress={() => {}}>
           <View style={styles.iconTile}>
-            <Ionicons name="heart-outline" size={24} color={colors.dark} />
+            <Ionicons name="heart-outline" size={24} color={colors.primaryText} />
           </View>
           <Text style={styles.title}>Log in to save this stay</Text>
           <Text style={styles.body}>Favourites and ratings are for logged-in customers.</Text>
@@ -47,13 +45,13 @@ export default function LoginPrompt({ visible, onClose }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
-  backdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'flex-end' },
+const makeStyles = (colors: AppPalette) => StyleSheet.create({
+  backdrop: { flex: 1, backgroundColor: colors.overlay, justifyContent: 'flex-end' },
   sheet: {
     width: '100%',
     maxWidth: 480,
     alignSelf: 'center',
-    backgroundColor: colors.card,
+    backgroundColor: colors.surface,
     borderTopLeftRadius: 28,
     borderTopRightRadius: 28,
     padding: 20,
@@ -69,23 +67,23 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   title: { fontSize: 22, fontWeight: '800', color: colors.text, marginBottom: 8 },
-  body: { fontSize: 15, color: colors.muted, lineHeight: 22, marginBottom: 24 },
+  body: { fontSize: 15, color: colors.textSecondary, lineHeight: 22, marginBottom: 24 },
   primaryButton: {
     height: 54,
-    backgroundColor: colors.dark,
+    backgroundColor: colors.primary,
     borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 12,
   },
-  primaryText: { fontSize: 16, fontWeight: '700', color: '#FFFFFF' },
+  primaryText: { fontSize: 16, fontWeight: '700', color: colors.onPrimary },
   outlineButton: {
     height: 54,
     borderWidth: 1,
-    borderColor: colors.dark,
+    borderColor: colors.primary,
     borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  outlineText: { fontSize: 16, fontWeight: '700', color: colors.dark },
+  outlineText: { fontSize: 16, fontWeight: '700', color: colors.primaryText },
 });

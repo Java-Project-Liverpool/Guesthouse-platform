@@ -1,16 +1,34 @@
 import { DarkTheme, DefaultTheme, Stack, ThemeProvider, usePathname, useRouter } from 'expo-router';
+import { StatusBar } from 'expo-status-bar';
 import { NavigationBar } from 'expo-navigation-bar';
 import * as SplashScreen from 'expo-splash-screen';
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 import { AppState, Platform } from 'react-native';
 import { AnimatedSplashOverlay } from '@/components/animated-icon';
 import { restoreSession, useAuth, validateSession } from '@/data/auth';
 import { restoreTheme, useTheme } from '@/data/theme';
+import { AppColors } from '@/constants/theme';
 
 SplashScreen.preventAutoHideAsync();
 
 export default function TabLayout() {
   const { mode } = useTheme();
+  const navigationTheme = useMemo(() => {
+    const palette = AppColors[mode];
+    const base = mode === 'dark' ? DarkTheme : DefaultTheme;
+    return {
+      ...base,
+      colors: {
+        ...base.colors,
+        primary: palette.primary,
+        background: palette.background,
+        card: palette.surface,
+        text: palette.text,
+        border: palette.border,
+        notification: palette.secondary,
+      },
+    };
+  }, [mode]);
   const router = useRouter();
   const pathname = usePathname();
   const { accountSuspended, user } = useAuth();
@@ -55,7 +73,8 @@ export default function TabLayout() {
   }, [userId, userRole]);
   
   return (
-    <ThemeProvider value={mode === 'dark' ? DarkTheme : DefaultTheme}>
+    <ThemeProvider value={navigationTheme}>
+      <StatusBar style={mode === 'dark' ? 'light' : 'dark'} />
       <AnimatedSplashOverlay />
       <Stack
         screenOptions={{

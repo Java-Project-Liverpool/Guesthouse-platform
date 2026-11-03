@@ -15,18 +15,9 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { login, logout, register, useAuth } from '@/data/auth';
 
-const colors = {
-  background: '#F7F5F0',
-  card: '#FFFFFF',
-  dark: '#14352A',
-  text: '#15201A',
-  muted: '#5F6B64',
-  border: '#C8CEC8',
-  placeholder: '#757575',
-  tabTrack: '#EEF1EC',
-  logoTile: '#F1F4EF',
-  error: '#B3261E',
-};
+
+import { useAppColors, useThemedStyles } from '@/hooks/use-app-colors';
+import type { AppPalette } from '@/constants/theme';
 
 const tabs = [
   { key: 'login', label: 'Log in' },
@@ -34,6 +25,8 @@ const tabs = [
 ] as const;
 
 export default function LoginScreen() {
+  const colors = useAppColors();
+  const styles = useThemedStyles(makeStyles);
   const router = useRouter();
   const { user, restoring } = useAuth();
   const [mode, setMode] = useState<'login' | 'signup'>('login');
@@ -91,7 +84,7 @@ export default function LoginScreen() {
     }
   };
 
-  if (restoring) return <SafeAreaView style={styles.screen}><ActivityIndicator size="large" color={colors.dark} /></SafeAreaView>;
+  if (restoring) return <SafeAreaView style={styles.screen}><ActivityIndicator size="large" color={colors.primaryText} /></SafeAreaView>;
 
   // Already signed in: show who, with a way to log out
   if (user) {
@@ -187,7 +180,7 @@ export default function LoginScreen() {
             onSubmitEditing={submit}
           />
           <Pressable style={styles.eyeButton} onPress={() => setPasswordVisible((visible) => !visible)} accessibilityRole="button" accessibilityLabel={passwordVisible ? 'Hide password' : 'Show password'}>
-            <Ionicons name={passwordVisible ? 'eye-off-outline' : 'eye-outline'} size={21} color={colors.muted} />
+            <Ionicons name={passwordVisible ? 'eye-off-outline' : 'eye-outline'} size={21} color={colors.textSecondary} />
           </Pressable>
         </View>
         {!isLogin && <>
@@ -207,7 +200,7 @@ export default function LoginScreen() {
           onPress={submit}
           disabled={busy}>
           {busy ? (
-            <ActivityIndicator color="#FFFFFF" />
+            <ActivityIndicator color={colors.onPrimary} />
           ) : (
             <Text style={styles.primaryText}>{isLogin ? 'Log in' : 'Create account'}</Text>
           )}
@@ -231,7 +224,7 @@ export default function LoginScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: AppPalette) => StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.background },
   content: {
     width: '100%',
@@ -247,7 +240,7 @@ const styles = StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: 14,
-    backgroundColor: colors.logoTile,
+    backgroundColor: colors.backgroundSecondary,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 20,
@@ -255,13 +248,13 @@ const styles = StyleSheet.create({
   logo: { width: 42, height: 42 },
 
   // Heading
-  brand: { fontSize: 14, color: colors.muted },
+  brand: { fontSize: 14, color: colors.textSecondary },
   title: { fontSize: 28, fontWeight: '800', color: colors.text, marginTop: 2, marginBottom: 28 },
 
   // Log in / Sign up switch
   tabs: {
     flexDirection: 'row',
-    backgroundColor: colors.tabTrack,
+    backgroundColor: colors.chip,
     borderRadius: 14,
     padding: 3,
     marginBottom: 24,
@@ -273,15 +266,15 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderRadius: 12,
   },
-  tabActive: { backgroundColor: colors.dark },
+  tabActive: { backgroundColor: colors.primary },
   tabText: { fontSize: 14, fontWeight: '700', color: colors.text },
-  tabTextActive: { color: '#FFFFFF' },
+  tabTextActive: { color: colors.onPrimary },
 
   // Fields
-  label: { fontSize: 14, fontWeight: '600', color: colors.muted, marginBottom: 8 },
+  label: { fontSize: 14, fontWeight: '600', color: colors.textSecondary, marginBottom: 8 },
   input: {
     height: 54,
-    backgroundColor: colors.card,
+    backgroundColor: colors.surface,
     borderWidth: 1,
     borderColor: colors.border,
     borderRadius: 14,
@@ -298,29 +291,29 @@ const styles = StyleSheet.create({
   // Buttons
   primaryButton: {
     height: 54,
-    backgroundColor: colors.dark,
+    backgroundColor: colors.primary,
     borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 22,
   },
   primaryButtonBusy: { opacity: 0.7 },
-  primaryText: { fontSize: 16, fontWeight: '700', color: '#FFFFFF' },
+  primaryText: { fontSize: 16, fontWeight: '700', color: colors.onPrimary },
   guestButton: {
     height: 54,
     borderWidth: 1,
-    borderColor: colors.dark,
+    borderColor: colors.primary,
     borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 22,
   },
-  guestText: { fontSize: 16, fontWeight: '700', color: colors.dark },
-  note: { fontSize: 14, color: colors.muted, textAlign: 'center' },
+  guestText: { fontSize: 16, fontWeight: '700', color: colors.primaryText },
+  note: { fontSize: 14, color: colors.textSecondary, textAlign: 'center' },
 
   // Signed-in view
   accountCard: {
-    backgroundColor: colors.card,
+    backgroundColor: colors.surface,
     borderWidth: 1,
     borderColor: colors.border,
     borderRadius: 20,
@@ -328,5 +321,5 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   accountName: { fontSize: 18, fontWeight: '800', color: colors.text, marginBottom: 4 },
-  accountEmail: { fontSize: 14, color: colors.muted },
+  accountEmail: { fontSize: 14, color: colors.textSecondary },
 });

@@ -18,14 +18,13 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import StayImage from '@/components/stay-image';
 import { getStay, type Stay } from '@/data/stays';
 
-const colors = {
-  background: '#0B0F0D',
-  button: '#26332D',
-  white: '#FFFFFF',
-  active: '#FFFFFF',
-};
+
+import { useAppColors, useThemedStyles } from '@/hooks/use-app-colors';
+import type { AppPalette } from '@/constants/theme';
 
 export default function GalleryScreen() {
+  const colors = useAppColors();
+  const styles = useThemedStyles(makeStyles);
   const router = useRouter();
   const { width } = useWindowDimensions();
   const { id } = useLocalSearchParams<{ id?: string }>();
@@ -45,8 +44,8 @@ export default function GalleryScreen() {
     return () => { active = false; };
   }, [id]);
 
-  if (loading && id) return <SafeAreaView style={styles.screen}><ActivityIndicator color={colors.white} size="large" /></SafeAreaView>;
-  if (!stay) return <SafeAreaView style={styles.screen}><View style={styles.inner}><Pressable style={styles.roundButton} onPress={() => router.back()}><Ionicons name="close" size={22} color={colors.white} /></Pressable><Text style={styles.counter}>{error || (!id ? 'This photo gallery is missing its listing.' : 'This guesthouse is unavailable.')}</Text></View></SafeAreaView>;
+  if (loading && id) return <SafeAreaView style={styles.screen}><ActivityIndicator color={colors.onPrimary} size="large" /></SafeAreaView>;
+  if (!stay) return <SafeAreaView style={styles.screen}><View style={styles.inner}><Pressable style={styles.roundButton} onPress={() => router.back()}><Ionicons name="close" size={22} color={colors.onPrimary} /></Pressable><Text style={styles.counter}>{error || (!id ? 'This photo gallery is missing its listing.' : 'This guesthouse is unavailable.')}</Text></View></SafeAreaView>;
 
   // Uses the stay's gallery if it has one, otherwise just its main photo.
   // A stay with no photos shows its colour block.
@@ -70,7 +69,7 @@ export default function GalleryScreen() {
         {/* Top bar */}
         <View style={styles.topBar}>
           <Pressable style={styles.roundButton} onPress={() => router.back()}>
-            <Ionicons name="close" size={22} color={colors.white} />
+            <Ionicons name="close" size={22} color={colors.onPrimary} />
           </Pressable>
           <Text style={styles.counter}>
             {index + 1} / {photos.length}
@@ -78,7 +77,7 @@ export default function GalleryScreen() {
           <Pressable
             style={styles.roundButton}
             onPress={() => Share.share({ message: stay.name + ' on Dumela Stays' })}>
-            <Ionicons name="share-outline" size={22} color={colors.white} />
+            <Ionicons name="share-outline" size={22} color={colors.onPrimary} />
           </Pressable>
         </View>
 
@@ -124,7 +123,7 @@ export default function GalleryScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: AppPalette) => StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.background },
   inner: { flex: 1, width: '100%', maxWidth: 480, alignSelf: 'center' },
 
@@ -139,11 +138,11 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: colors.button,
+    backgroundColor: colors.surfaceElevated,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  counter: { fontSize: 18, fontWeight: '800', color: colors.white },
+  counter: { fontSize: 18, fontWeight: '800', color: colors.onPrimary },
 
   pager: { flex: 1 },
   page: { height: '100%', alignItems: 'center', justifyContent: 'center' },
@@ -160,5 +159,5 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: 'transparent',
   },
-  thumbActive: { opacity: 1, borderColor: colors.active },
+  thumbActive: { opacity: 1, borderColor: colors.surface },
 });
