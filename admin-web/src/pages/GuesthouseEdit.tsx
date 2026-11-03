@@ -84,9 +84,9 @@ export const GuesthouseEdit: React.FC<GuesthouseEditProps> = ({ id }) => {
               setEmail(g.contact.email || '');
             }
             setLogo(g.logo || '');
-            setLogoPublicId((g as any).logoPublicId || '');
+            setLogoPublicId(g.logoPublicId || '');
             setGallery(g.gallery || []);
-            setGalleryPublicIds((g as any).galleryPublicIds || []);
+            setGalleryPublicIds(g.galleryPublicIds || []);
             setIsVerified(g.verificationStatus === 'verified');
             setIsActive(g.isActive !== false);
           }
