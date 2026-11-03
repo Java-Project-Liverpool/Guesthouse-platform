@@ -98,7 +98,7 @@ export default function SmartComparePanel({ stays }: { stays: Stay[] }) {
               {labels.map((item) => (
                 <View key={item.label} style={styles.verdictRow}>
                   <Text style={styles.verdictLabel}>{item.label}</Text>
-                  <Text style={styles.verdictName} numberOfLines={1}>{nameOf(item.id)}</Text>
+                  <Text style={styles.verdictName} numberOfLines={2}>{nameOf(item.id)}</Text>
                 </View>
               ))}
             </View>
@@ -115,7 +115,7 @@ export default function SmartComparePanel({ stays }: { stays: Stay[] }) {
                   <Text style={styles.rankNumber}>{row.score === null ? '–' : index + 1}</Text>
                 </View>
                 <View style={styles.rankBody}>
-                  <Text style={styles.rankName} numberOfLines={1}>{stay.name}</Text>
+                  <Text style={styles.rankName} numberOfLines={2}>{stay.name}</Text>
                   {row.score === null ? (
                     <Text style={styles.hint}>Not enough data to rank for this priority (price or rating missing).</Text>
                   ) : (
@@ -147,29 +147,29 @@ export default function SmartComparePanel({ stays }: { stays: Stay[] }) {
 }
 
 const makeStyles = (colors: AppPalette) => StyleSheet.create({
-  card: { marginHorizontal: 16, marginTop: 16, padding: 16, borderRadius: Radii.card, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, gap: 10 },
+  card: { marginHorizontal: 16, marginTop: 16, padding: 20, borderRadius: Radii.card, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, gap: 14 },
   eyebrow: { ...Typography.metadata, letterSpacing: 2, color: colors.secondary, fontWeight: '700', textTransform: 'uppercase' },
   title: { ...Typography.section, color: colors.text },
   label: { ...Typography.supporting, fontWeight: '700', color: colors.textSecondary, marginTop: 4 },
-  chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  chip: { paddingHorizontal: 12, paddingVertical: 7, borderRadius: Radii.pill, backgroundColor: colors.chip, borderWidth: 1, borderColor: colors.border },
+  chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
+  chip: { paddingHorizontal: 14, paddingVertical: 10, borderRadius: Radii.pill, backgroundColor: colors.chip, borderWidth: 1, borderColor: colors.border },
   chipActive: { backgroundColor: colors.primary, borderColor: colors.primary },
   chipText: { ...Typography.supporting, fontWeight: '600', color: colors.text },
   chipTextActive: { color: colors.onPrimary },
-  dateRow: { flexDirection: 'row', gap: 8 },
+  dateRow: { flexDirection: 'row', gap: 12 },
   input: { flex: 1, minHeight: 44, paddingHorizontal: 12, borderRadius: Radii.control, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.inputBackground, color: colors.text, fontSize: 14 },
   warning: { ...Typography.supporting, color: colors.error },
   hint: { ...Typography.supporting, color: colors.textSecondary },
-  verdictList: { gap: 6, padding: 12, borderRadius: Radii.control, backgroundColor: colors.backgroundSecondary },
-  verdictRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 8 },
-  verdictLabel: { ...Typography.supporting, fontWeight: '700', color: colors.primaryText },
-  verdictName: { ...Typography.supporting, flexShrink: 1, color: colors.text, fontWeight: '600' },
-  rankRow: { flexDirection: 'row', gap: 12, paddingVertical: 8, borderTopWidth: 1, borderTopColor: colors.divider },
-  rankBadge: { width: 30, height: 30, borderRadius: 15, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.chip },
-  rankNumber: { ...Typography.supporting, fontWeight: '800', color: colors.primaryText },
-  rankBody: { flex: 1, gap: 2 },
-  rankName: { ...Typography.cardTitle, color: colors.text },
+  verdictList: { gap: 10, padding: 14, borderRadius: Radii.control, backgroundColor: colors.backgroundSecondary },
+  verdictRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12, paddingVertical: 6 },
+  verdictLabel: { ...Typography.supporting, fontWeight: '700', color: colors.primaryText, flexShrink: 0 },
+  verdictName: { ...Typography.supporting, flexShrink: 1, color: colors.text, fontWeight: '600', flexWrap: 'wrap' },
+  rankRow: { flexDirection: 'row', gap: 14, paddingVertical: 14, borderTopWidth: 1, borderTopColor: colors.divider },
+  rankBadge: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.primary, flexShrink: 0 },
+  rankNumber: { ...Typography.supporting, fontWeight: '800', color: colors.onPrimary },
+  rankBody: { flex: 1, gap: 4 },
+  rankName: { ...Typography.cardTitle, color: colors.text, flexWrap: 'wrap' },
   reason: { ...Typography.supporting, color: colors.textSecondary },
-  planButton: { alignSelf: 'flex-start', marginTop: 6, paddingHorizontal: 12, paddingVertical: 7, borderRadius: Radii.pill, backgroundColor: colors.primary },
+  planButton: { alignSelf: 'flex-start', marginTop: 10, paddingHorizontal: 14, paddingVertical: 8, borderRadius: Radii.pill, backgroundColor: colors.primary },
   planText: { ...Typography.supporting, fontWeight: '700', color: colors.onPrimary },
 });

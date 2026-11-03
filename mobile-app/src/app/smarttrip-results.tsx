@@ -17,7 +17,9 @@ import {
   type TripInput,
 } from '@/data/smarttrip-engine';
 import { getLastPlan } from '@/data/smarttrip';
+import { suggestAlternatives } from '@/data/smarttrip-alternatives';
 import { useAppColors, useThemedStyles } from '@/hooks/use-app-colors';
+import { useStays } from '@/data/stays';
 import { useTabBarPadding } from '@/hooks/use-tab-bar-padding';
 import { formatPula } from '@/utils/currency';
 
@@ -29,6 +31,40 @@ const EXPENSE_ROWS = [
   { key: 'activities', label: 'Activities' },
   { key: 'other', label: 'Other' },
 ] as const;
+
+function AlternativeSection({ alternatives, input, router, styles }: { alternatives: any[]; input: any; router: any; styles: Styles }) {
+  if (alternatives.length === 0 || !input) return null;
+  return (
+    <View style={styles.altSection}>
+      <Text style={styles.altTitle}>Alternative recommendations</Text>
+      <Text style={styles.altBody}>We could not match everything exactly. These small changes unlock real stays from the backend.</Text>
+      {alternatives.map((alt) => (
+        <View key={alt.label} style={styles.altCard}>
+          <View style={styles.altHeader}>
+            <Text style={styles.altLabel}>{alt.label}</Text>
+          </View>
+          <Text style={styles.altExplanation}>{alt.explanation}</Text>
+          {alt.candidates.length > 0 && (
+            <>
+              <Text style={styles.altSub}>Available under this change:</Text>
+              <View style={styles.altList}>
+                {alt.candidates.map((c) => (
+                  <Pressable key={c.stay.id} onPress={() => router.push({ pathname: '/smarttrip', params: { destination: input.destination, stayId: c.stay.id } })} accessibilityRole="button" style={styles.altItem}>
+                    <Text style={styles.altItemName}>{c.stay.name}</Text>
+                    <Text style={styles.altItemPrice}>{formatPula(c.nightly)} / night · {formatPula(c.accommodationCost)} total</Text>
+                  </Pressable>
+                ))}
+              </View>
+            </>
+          )}
+          <Pressable onPress={() => router.push({ pathname: '/smarttrip', params: { destination: input.destination, budget: String(Math.round(input.budget * (alt.scoreCloseness < 0.25 ? 1.2 : 1))) } })} accessibilityRole="button" style={styles.altApplyButton}>
+            <Text style={styles.altApplyText}>Try this change</Text>
+          </Pressable>
+        </View>
+      ))}
+    </View>
+  );
+}
 
 function ResultsFrame({ children, styles, tabBarPadding, header }: { children: ReactNode; styles: Styles; tabBarPadding: number; header: ReactNode }) {
   return (
@@ -51,6 +87,7 @@ export default function SmartTripResultsScreen() {
   const { stayId } = useLocalSearchParams<{ stayId?: string }>();
   const { user } = useAuth();
   const { saved, toggleSaved } = useFavourites();
+  const catalogue = useStays();
   const { has: isInComparison } = useComparison();
   const plan = getLastPlan();
 
@@ -65,15 +102,23 @@ export default function SmartTripResultsScreen() {
   const [message, setMessage] = useState('');
 
   const ok = plan?.result.status === 'ok' ? plan.result : null;
+  const input = plan?.input;
+  const nights = ok ? ok.days - 1 : 0;
   const candidates: Candidate[] = useMemo(
     () => (plan?.result.status === 'ok' ? plan.result.candidates : []),
     [plan]
   );
+  const alternatives = useMemo(() => {
+    if (!plan || !input) return [];
+    if (plan.result.status === 'ok' && candidates.length >= 2) return [];
+    const nightsValue = nightsBetween(input.arrival, input.departure) ?? 2;
+    const stays = catalogue.stays || [];
+    if (stays.length === 0) return [];
+    return suggestAlternatives(stays, input, nightsValue);
+  }, [plan, input, catalogue.stays, candidates.length]);
   const defaultId = candidates.find((c) => c.stay.id === stayId)?.stay.id ?? candidates[0]?.stay.id ?? null;
   const selectedId = candidates.some((c) => c.stay.id === choice) ? choice : defaultId;
   const selected = candidates.find((c) => c.stay.id === selectedId) ?? candidates[0];
-  const input = plan?.input;
-  const nights = ok ? ok.days - 1 : 0;
 
   const generated: Days = useMemo(
     () => (selected && input ? buildItinerary(selected.stay.name, selected.stay.city, nights, input.interests) : []),
@@ -141,7 +186,8 @@ export default function SmartTripResultsScreen() {
         <View style={styles.card}>
           <Text style={styles.title}>{info.title}</Text>
           <Text style={styles.body}>{info.body}</Text>
-          <Pressable onPress={() => router.back()} accessibilityRole="button" style={styles.primaryButton}>
+          <AlternativeSection alternatives={alternatives} input={input} router={router} styles={styles} />
+        <Pressable onPress={() => router.back()} accessibilityRole="button" style={styles.primaryButton}>
             <Text style={styles.primaryText}>Change my trip details</Text>
           </Pressable>
         </View>
@@ -345,6 +391,20 @@ const makeStyles = (colors: AppPalette) => StyleSheet.create({
   disclaimer: { ...Typography.metadata, color: colors.textMuted, lineHeight: 16 },
   message: { ...Typography.supporting, color: colors.primaryText, fontWeight: '600' },
   warning: { ...Typography.supporting, color: colors.error, fontWeight: '600' },
+  altSection: { gap: 14, marginTop: 12, padding: 16, borderRadius: Radii.card, backgroundColor: colors.backgroundSecondary, borderWidth: 1, borderColor: colors.border },
+  altTitle: { ...Typography.cardTitleLarge, color: colors.text },
+  altBody: { ...Typography.supporting, color: colors.textSecondary, marginTop: 4 },
+  altCard: { padding: 14, borderRadius: Radii.control, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, gap: 8, marginTop: 10 },
+  altHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  altLabel: { ...Typography.cardTitle, fontWeight: '700', color: colors.primaryText },
+  altExplanation: { ...Typography.supporting, color: colors.textSecondary, lineHeight: 18 },
+  altSub: { ...Typography.supporting, fontWeight: '700', color: colors.text, marginTop: 6 },
+  altList: { gap: 8, marginTop: 6 },
+  altItem: { padding: 10, borderRadius: Radii.control, backgroundColor: colors.backgroundSecondary, borderWidth: 1, borderColor: colors.border },
+  altItemName: { ...Typography.cardTitle, color: colors.text },
+  altItemPrice: { ...Typography.supporting, color: colors.textSecondary, fontWeight: '600', marginTop: 2 },
+  altApplyButton: { alignSelf: 'flex-start', marginTop: 10, paddingHorizontal: 14, paddingVertical: 10, borderRadius: Radii.pill, backgroundColor: colors.primary },
+  altApplyText: { ...Typography.supporting, fontWeight: '700', color: colors.onPrimary },
   stayCard: { flexDirection: 'column', borderRadius: Radii.card, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, overflow: 'hidden' },
   stayCardSelected: { borderColor: colors.primary, borderWidth: 2 },
   stayImage: { width: '100%', height: 160 },
