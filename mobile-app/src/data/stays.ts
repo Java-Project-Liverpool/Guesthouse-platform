@@ -113,7 +113,7 @@ export async function submitStayReview(id: string, token: string, rating: number
 function loadStays(force: boolean): Promise<Stay[]> {
   if (!force && cachedStays && Date.now() - cachedAt < 60_000) return Promise.resolve(cachedStays);
   if (!force && inFlight) return inFlight;
-  const request = apiRequest<GuesthousesResponse>('/api/guesthouses/search?sortBy=recent&limit=100')
+  const request = apiRequest<GuesthousesResponse>('/api/guesthouses/search?sortBy=recent&limit=20')
     .then((result) => {
       const items = Array.isArray(result.guesthouses) ? result.guesthouses : [];
       cachedStays = items.filter((item) => typeof item._id === 'string' && Boolean(item.name)).map(toStay);

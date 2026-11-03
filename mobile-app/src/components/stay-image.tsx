@@ -3,6 +3,11 @@ import { Image } from 'expo-image';
 import { StyleSheet, View } from 'react-native';
 import { useState } from 'react';
 
+function optUri(uri?: string) {
+  if (!uri) return uri;
+  if (uri.includes('cloudinary.com')) return uri.replace('/upload/', '/upload/w_600,q_auto,f_auto/');
+  return uri;
+}
 export default function StayImage({
   uri,
   color,
@@ -17,7 +22,7 @@ export default function StayImage({
     <View style={[styles.fallback, style, { backgroundColor: color ?? '#E1E9E3' }]}>
       {uri && !failed ? (
         <Image
-          source={{ uri }}
+          source={{ uri: optUri(uri) }}
           style={StyleSheet.absoluteFill}
           contentFit="cover"
           transition={180}
