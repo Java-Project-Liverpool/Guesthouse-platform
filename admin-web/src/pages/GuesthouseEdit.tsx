@@ -47,7 +47,9 @@ export const GuesthouseEdit: React.FC<GuesthouseEditProps> = ({ id }) => {
 
   // Image State
   const [logo, setLogo] = useState('');
+  const [logoPublicId, setLogoPublicId] = useState('');
   const [gallery, setGallery] = useState<string[]>([]);
+  const [galleryPublicIds, setGalleryPublicIds] = useState<string[]>([]);
   const [newGalleryUrl, setNewGalleryUrl] = useState('');
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const [uploadingGallery, setUploadingGallery] = useState(false);
@@ -82,7 +84,9 @@ export const GuesthouseEdit: React.FC<GuesthouseEditProps> = ({ id }) => {
               setEmail(g.contact.email || '');
             }
             setLogo(g.logo || '');
+            setLogoPublicId(g.logoPublicId || '');
             setGallery(g.gallery || []);
+            setGalleryPublicIds(g.galleryPublicIds || []);
             setIsVerified(g.verificationStatus === 'verified');
             setIsActive(g.isActive !== false);
           }
@@ -123,6 +127,7 @@ export const GuesthouseEdit: React.FC<GuesthouseEditProps> = ({ id }) => {
     try {
       const res = await uploadGuesthouseImage(file, 'logo');
       setLogo(res.url);
+      setLogoPublicId(res.publicId);
     } catch (err: unknown) {
       setImageError(err instanceof Error ? err.message : 'Image upload failed.');
     } finally {
@@ -141,6 +146,7 @@ export const GuesthouseEdit: React.FC<GuesthouseEditProps> = ({ id }) => {
     try {
       const res = await uploadGuesthouseImage(file, 'gallery');
       setGallery((prev) => [...prev, res.url]);
+      setGalleryPublicIds((prev) => [...prev, res.publicId]);
     } catch (err: unknown) {
       setImageError(err instanceof Error ? err.message : 'Gallery photo upload failed.');
     } finally {
@@ -163,6 +169,7 @@ export const GuesthouseEdit: React.FC<GuesthouseEditProps> = ({ id }) => {
 
   const handleRemoveGalleryPhoto = (index: number) => {
     setGallery((prev) => prev.filter((_, i) => i !== index));
+    setGalleryPublicIds((prev) => prev.filter((_, i) => i !== index));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -185,7 +192,9 @@ export const GuesthouseEdit: React.FC<GuesthouseEditProps> = ({ id }) => {
       country: country.trim(),
       pricePerNight: Number(pricePerNight) || 0,
       logo: trimmedLogo,
+      logoPublicId: logoPublicId,
       gallery,
+      galleryPublicIds,
       location: {
         latitude: parseFloat(latitude) || -19.9833,
         longitude: parseFloat(longitude) || 23.4167,
@@ -578,7 +587,7 @@ export const GuesthouseEdit: React.FC<GuesthouseEditProps> = ({ id }) => {
                   {logo && (
                     <button
                       type="button"
-                      onClick={() => setLogo('')}
+                      onClick={() => { setLogo(''); setLogoPublicId(''); }}
                       style={{
                         background: 'none',
                         border: 'none',

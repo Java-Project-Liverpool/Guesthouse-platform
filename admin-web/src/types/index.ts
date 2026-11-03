@@ -18,7 +18,9 @@ export interface Guesthouse {
   _id: string;
   name: string;
   logo: string;
+  logoPublicId?: string;
   gallery: string[];
+  galleryPublicIds?: string[];
   description: string;
   amenities: string[];
   pricePerNight: number;
