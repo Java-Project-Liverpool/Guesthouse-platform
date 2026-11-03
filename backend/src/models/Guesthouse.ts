@@ -155,4 +155,9 @@ const guesthouseSchema = new Schema<IGuesthouse>(
   }
 );
 
+guesthouseSchema.index({ isActive: 1, createdAt: -1 });
+guesthouseSchema.index({ isActive: 1, pricePerNight: 1, city: 1 });
+guesthouseSchema.index({ city: 1, country: 1, isActive: 1 });
+guesthouseSchema.index({ isActive: 1, pricePerNight: 1 });
+
 export default mongoose.model<IGuesthouse>("Guesthouse", guesthouseSchema);

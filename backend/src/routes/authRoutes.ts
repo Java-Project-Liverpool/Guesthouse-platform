@@ -4,6 +4,13 @@ import jwt from "jsonwebtoken";
 import { getJwtSecret } from "../config/jwt";
 import { authenticate } from "../middleware/authMiddleware";
 import User from "../models/User";
+import {
+  GoogleAuthNotConfiguredError,
+  InvalidGoogleIdentityError,
+  isGoogleVerifierUnavailable,
+  verifyGoogleIdentity
+} from "../services/googleIdentity";
+import type { VerifiedGoogleIdentity } from "../services/googleIdentity";
 
 const router = Router();
 
@@ -116,12 +123,116 @@ router.post("/login", async (req: Request, res: Response) => {
         id: user.id,
         name: user.name,
         email: user.email,
-        role: user.role
+        role: user.role,
+        authProvider: user.authProvider
       }
     });
   } catch (error) {
     console.error("User login failed.", error);
     return res.status(500).json({ message: "Could not authenticate account." });
+  }
+});
+
+// Google returns an ID token; the backend verifies it before looking up or creating an account.
+router.post("/google", async (req: Request, res: Response) => {
+  const body: unknown = req.body;
+  if (body === null || typeof body !== "object" || Array.isArray(body)) {
+    return res.status(400).json({ message: "Request body must be a JSON object." });
+  }
+
+  const { idToken } = body as Record<string, unknown>;
+  if (typeof idToken !== "string" || idToken.length === 0 || idToken.length > 16_384) {
+    return res.status(400).json({ message: "A valid Google ID token is required." });
+  }
+
+  let identity: VerifiedGoogleIdentity;
+  try {
+    identity = await verifyGoogleIdentity(idToken);
+  } catch (error) {
+    if (error instanceof GoogleAuthNotConfiguredError) {
+      return res.status(503).json({ code: "GOOGLE_AUTH_NOT_CONFIGURED", message: "Google sign-in is temporarily unavailable." });
+    }
+    if (isGoogleVerifierUnavailable(error)) {
+      console.error("Google identity verification service is unavailable.", error instanceof Error ? error.name : "UnknownError");
+      return res.status(503).json({ code: "GOOGLE_VERIFICATION_UNAVAILABLE", message: "Google sign-in could not be verified right now. Please try again." });
+    }
+    if (!(error instanceof InvalidGoogleIdentityError)) {
+      console.error("Google identity verification failed.", error instanceof Error ? error.name : "UnknownError");
+    }
+    return res.status(401).json({ code: "GOOGLE_AUTH_INVALID", message: "Google sign-in could not be verified. Please try again." });
+  }
+
+  try {
+    let user = await User.findOne({ googleId: identity.sub });
+    let created = false;
+
+    if (!user) {
+      // A verified email is not enough to link an existing local account to Google.
+      const emailOwner = await User.findOne({ email: identity.email });
+      if (emailOwner) {
+        return res.status(409).json({
+          code: "AUTH_METHOD_MISMATCH",
+          message: "An account already uses this email. Sign in with its existing method."
+        });
+      }
+
+      const emailName = identity.email.split("@")[0].replace(/[._-]+/g, " ").trim();
+      const suggestedName = identity.name?.trim() || emailName;
+      const name = suggestedName.length >= 2 ? suggestedName.slice(0, 100) : "Dumela traveller";
+
+      try {
+        user = await User.create({
+          name,
+          email: identity.email,
+          role: "customer",
+          authProvider: "google",
+          googleId: identity.sub,
+          isActive: true
+        });
+        created = true;
+      } catch (error) {
+        // A concurrent sign-in may have inserted this same Google subject after the lookup.
+        if (!isDuplicateKeyError(error)) throw error;
+        user = await User.findOne({ googleId: identity.sub });
+        if (!user) {
+          return res.status(409).json({
+            code: "AUTH_METHOD_MISMATCH",
+            message: "An account already uses this email. Sign in with its existing method."
+          });
+        }
+      }
+    }
+
+    if (user.authProvider !== "google" || user.role !== "customer") {
+      return res.status(403).json({ message: "Google sign-in is not available for this account." });
+    }
+    if (user.isActive === false) {
+      return res.status(403).json({
+        code: "ACCOUNT_SUSPENDED",
+        message: "Your account has been suspended. Please contact support."
+      });
+    }
+
+    const token = jwt.sign(
+      { role: user.role },
+      getJwtSecret(),
+      { algorithm: "HS256", subject: user.id, expiresIn: "1h" }
+    );
+
+    return res.status(created ? 201 : 200).json({
+      message: created ? "Google account created successfully." : "Google sign-in successful.",
+      token,
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        authProvider: user.authProvider
+      }
+    });
+  } catch (error) {
+    console.error("Google account sign-in failed.", error instanceof Error ? error.name : "UnknownError");
+    return res.status(500).json({ message: "Could not authenticate with Google." });
   }
 });
 
@@ -265,6 +376,45 @@ router.put("/password", authenticate, async (req: Request, res: Response) => {
   } catch (error) {
     console.error("Password update failed.", error);
     return res.status(500).json({ message: "Could not update password." });
+  }
+});
+
+router.delete("/delete-account", authenticate, async (req: Request, res: Response) => {
+  try {
+    const userId = req.authenticatedUser!.id;
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ message: "Account not found." });
+    }
+
+    try {
+      const mongoose = await import("mongoose");
+      const session = await mongoose.default.startSession();
+      session.startTransaction();
+      try {
+        const Favourite = (await import("../models/Favourite")).default;
+        const Rating = (await import("../models/Rating")).default;
+        const SearchHistory = (await import("../models/SearchHistory")).default;
+
+        await Favourite.deleteMany({ customerId: userId }, { session });
+        await Rating.deleteMany({ customerId: userId }, { session });
+        await SearchHistory.deleteMany({ customerId: userId }, { session });
+
+        await User.findByIdAndDelete(userId, { session });
+        await session.commitTransaction();
+      } catch (e) {
+        await session.abortTransaction();
+        throw e;
+      } finally {
+        session.endSession();
+      }
+      return res.json({ message: "Account deleted successfully." });
+    } catch (inner) {
+      throw inner;
+    }
+  } catch (error) {
+    console.error("Account deletion failed.", error instanceof Error ? error.name : "UnknownError");
+    return res.status(500).json({ message: "Could not delete account." });
   }
 });
 

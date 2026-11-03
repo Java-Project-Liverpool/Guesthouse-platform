@@ -57,7 +57,25 @@ export default function TabLayout() {
   return (
     <ThemeProvider value={mode === 'dark' ? DarkTheme : DefaultTheme}>
       <AnimatedSplashOverlay />
-      <Stack screenOptions={{ headerShown: false }} />
+      <Stack
+        screenOptions={{
+          headerShown: false,
+          animation: 'fade_from_bottom',
+          animationDuration: 250,
+          animationTypeForReplace: 'pop',
+        }}
+      >
+        <Stack.Screen name="details" options={{ animation: 'slide_from_right' }} />
+        <Stack.Screen name="compare" options={{ animation: 'slide_from_right' }} />
+        <Stack.Screen name="reviews" options={{ animation: 'slide_from_right' }} />
+        <Stack.Screen name="settings" options={{ animation: 'fade' }} />
+        <Stack.Screen name="edit-profile" options={{ animation: 'slide_from_right' }} />
+        <Stack.Screen name="change-password" options={{ animation: 'slide_from_right' }} />
+        <Stack.Screen name="account-info" options={{ animation: 'slide_from_right' }} />
+        <Stack.Screen name="delete-account" options={{ animation: 'slide_from_right' }} />
+        <Stack.Screen name="login" options={{ animation: 'fade', animationTypeForReplace: 'push' }} />
+        <Stack.Screen name="welcome" options={{ animation: 'fade' }} />
+      </Stack>
     </ThemeProvider>
   );
 }
