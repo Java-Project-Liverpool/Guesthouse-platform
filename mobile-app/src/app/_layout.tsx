@@ -86,6 +86,8 @@ export default function TabLayout() {
       >
         <Stack.Screen name="details" options={{ animation: 'slide_from_right' }} />
         <Stack.Screen name="compare" options={{ animation: 'slide_from_right' }} />
+        <Stack.Screen name="smarttrip" options={{ animation: 'slide_from_right' }} />
+        <Stack.Screen name="smarttrip-results" options={{ animation: 'slide_from_right' }} />
         <Stack.Screen name="reviews" options={{ animation: 'slide_from_right' }} />
         <Stack.Screen name="settings" options={{ animation: 'fade' }} />
         <Stack.Screen name="edit-profile" options={{ animation: 'slide_from_right' }} />

@@ -64,6 +64,19 @@ export default function HomeScreen() {
           </View>
         </View>
 
+        {/* SmartTrip entry */}
+        <Pressable onPress={() => router.push('/smarttrip')} style={styles.smartCard} accessibilityRole="button" accessibilityLabel="Plan a trip with SmartTrip">
+          <View style={styles.smartIcon}>
+            <Ionicons name="sparkles-outline" size={22} color={colors.onPrimary} />
+          </View>
+          <View style={styles.smartText}>
+            <Text style={styles.smartEyebrow}>New · Dumela SmartTrip</Text>
+            <Text style={styles.smartTitle}>Plan your whole trip</Text>
+            <Text style={styles.smartBody}>Real guesthouses ranked for your budget, dates and needs.</Text>
+          </View>
+          <Ionicons name="chevron-forward" size={20} color={colors.primaryText} />
+        </Pressable>
+
         {/* Search shortcut */}
         <View style={styles.searchCard}>
           <Ionicons name="search-outline" size={20} color={colors.textSecondary} />
@@ -169,6 +182,12 @@ const makeStyles = (colors: AppPalette) => StyleSheet.create({
   heroSub: { fontSize: 14, color: colors.divider, marginTop: 6, lineHeight: 20 },
   ctaButton: { marginTop: 14, backgroundColor: colors.surface, alignSelf: 'flex-start', paddingVertical: 10, paddingHorizontal: 18, borderRadius: 999 },
   ctaText: { fontWeight: '600', color: colors.primaryText, fontSize: 15 },
+  smartCard: { flexDirection: 'row', alignItems: 'center', gap: 14, marginHorizontal: 16, marginTop: 16, padding: 16, borderRadius: 16, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border },
+  smartIcon: { width: 44, height: 44, borderRadius: 14, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.primary },
+  smartText: { flex: 1, gap: 2 },
+  smartEyebrow: { fontSize: 11, fontWeight: '700', letterSpacing: 1.5, textTransform: 'uppercase', color: colors.secondary },
+  smartTitle: { fontSize: 16, fontWeight: '700', color: colors.text },
+  smartBody: { fontSize: 13, color: colors.textSecondary, lineHeight: 18 },
   searchCard: { flexDirection: 'row', alignItems: 'center', marginHorizontal: 16, marginTop: 16, backgroundColor: colors.surface, padding: 14, borderRadius: 12, borderWidth: 1, borderColor: colors.border },
   searchInput: { flex: 1, marginLeft: 10, fontSize: 15, color: colors.text },
   section: { marginHorizontal: 16, marginTop: 28 },

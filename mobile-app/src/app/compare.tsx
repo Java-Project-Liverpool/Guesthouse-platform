@@ -5,6 +5,7 @@ import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, View
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import StayImage from '@/components/stay-image';
+import SmartComparePanel from '@/components/smartcompare-panel';
 import { MAX_COMPARE_STAYS, toggleCompareStay, useComparison } from '@/data/comparison';
 import { useStays, type Stay } from '@/data/stays';
 
@@ -100,6 +101,8 @@ export default function CompareScreen() {
             ? `Choose up to ${MAX_COMPARE_STAYS} stays to compare side by side.`
             : `${count} of ${MAX_COMPARE_STAYS} stays selected.`}
         </Text>
+
+        {count > 0 ? <SmartComparePanel stays={selected} /> : null}
 
         {/* Selected stays */}
         {count > 0 ? (
