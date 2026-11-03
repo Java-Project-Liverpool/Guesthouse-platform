@@ -153,7 +153,7 @@ function ToggleRow({ icon, label, value, onToggle, last, dark }: { icon: string;
     <View style={[styles.toggleRow, !last && { borderBottomWidth: 1, borderBottomColor: dark ? '#2C3D36' : colors.border }]}> 
       <View style={styles.toggleLeft}>
         <View style={[styles.rowIcon, dark && { backgroundColor: '#2C3D36' }]}><Ionicons name={icon as any} size={20} color={colors.dark} /></View>
-        <Text style={[styles.rowText, dark && { color: '#EAECE8' }]}>{label}</Text>
+        <Text style={[styles.rowText, dark && { color: '#EAECE8' }]} numberOfLines={1}>{label}</Text>
       </View>
       <Switch
         value={value}
@@ -182,8 +182,8 @@ const styles = StyleSheet.create({
   rowDivider: { borderBottomWidth: 1, borderBottomColor: colors.border },
   row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', height: 52, paddingHorizontal: 14 },
   toggleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', height: 52, paddingHorizontal: 14 },
-  toggleLeft: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  rowText: { fontSize: 15, fontWeight: '600', color: colors.text, flex: 1 },
+  toggleLeft: { flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1, flexShrink: 1, minWidth: 0 },
+  rowText: { fontSize: 15, fontWeight: '600', color: colors.text, flex: 1, flexShrink: 1 },
   rowIcon: { width: 28, height: 28, borderRadius: 8, backgroundColor: colors.chip, alignItems: 'center', justifyContent: 'center' },
   logoutButton: { height: 52, borderWidth: 1, borderColor: colors.danger, borderRadius: 14, alignItems: 'center', justifyContent: 'center', marginBottom: 20, backgroundColor: '#FFF5F5' },
   logoutText: { fontSize: 15, fontWeight: '700', color: colors.danger },
