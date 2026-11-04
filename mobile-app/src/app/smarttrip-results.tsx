@@ -3,6 +3,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useMemo, useState, type ReactNode } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { nightsBetween } from '@/data/smarttrip-engine';
 
 import StayImage from '@/components/stay-image';
 import { Radii, Typography, type AppPalette } from '@/constants/theme';
@@ -32,7 +33,7 @@ const EXPENSE_ROWS = [
   { key: 'other', label: 'Other' },
 ] as const;
 
-function AlternativeSection({ alternatives, input, router, styles }: { alternatives: any[]; input: any; router: any; styles: Styles }) {
+function AlternativeSection({ alternatives, input, router, styles }: { alternatives: import('@/data/smarttrip-alternatives').Alternative[]; input: import('@/data/smarttrip-engine').TripInput; router: ReturnType<typeof import('expo-router').useRouter>; styles: Styles }) {
   if (alternatives.length === 0 || !input) return null;
   return (
     <View style={styles.altSection}>
@@ -48,12 +49,18 @@ function AlternativeSection({ alternatives, input, router, styles }: { alternati
             <>
               <Text style={styles.altSub}>Available under this change:</Text>
               <View style={styles.altList}>
-                {alt.candidates.map((c) => (
-                  <Pressable key={c.stay.id} onPress={() => router.push({ pathname: '/smarttrip', params: { destination: input.destination, stayId: c.stay.id } })} accessibilityRole="button" style={styles.altItem}>
-                    <Text style={styles.altItemName}>{c.stay.name}</Text>
-                    <Text style={styles.altItemPrice}>{formatPula(c.nightly)} / night · {formatPula(c.accommodationCost)} total</Text>
+                {alt.candidates.map((c, idx) => {
+                const sid = c?.stay?.id ?? `alt-${idx}`;
+                const sname = c?.stay?.name ?? 'Unknown stay';
+                const nightly = typeof c?.nightly === 'number' ? c.nightly : 0;
+                const total = typeof c?.accommodationCost === 'number' ? c.accommodationCost : nightly * (nights || 2);
+                return (
+                  <Pressable key={sid} onPress={() => sid && sid !== `alt-${idx}` && router.push({ pathname: '/smarttrip', params: { destination: input.destination, stayId: sid } })} accessibilityRole="button" style={styles.altItem}>
+                    <Text style={styles.altItemName}>{sname}</Text>
+                    <Text style={styles.altItemPrice}>{formatPula(nightly)} / night · {formatPula(total)} total</Text>
                   </Pressable>
-                ))}
+                );
+              })}
               </View>
             </>
           )}
@@ -116,9 +123,9 @@ export default function SmartTripResultsScreen() {
     if (stays.length === 0) return [];
     return suggestAlternatives(stays, input, nightsValue);
   }, [plan, input, catalogue.stays, candidates.length]);
-  const defaultId = candidates.find((c) => c.stay.id === stayId)?.stay.id ?? candidates[0]?.stay.id ?? null;
-  const selectedId = candidates.some((c) => c.stay.id === choice) ? choice : defaultId;
-  const selected = candidates.find((c) => c.stay.id === selectedId) ?? candidates[0];
+  const defaultId = candidates.find((c) => c?.stay?.id === stayId)?.stay?.id ?? (candidates[0]?.stay?.id ?? null);
+  const selectedId = candidates.some((c) => c?.stay?.id === choice) ? choice : (defaultId || null);
+  const selected = (candidates.find((c) => c?.stay?.id === selectedId) ?? candidates[0]) || null;
 
   const generated: Days = useMemo(
     () => (selected && input ? buildItinerary(selected.stay.name, selected.stay.city, nights, input.interests) : []),
@@ -234,42 +241,52 @@ export default function SmartTripResultsScreen() {
       )}
 
       <Text style={styles.section}>Recommended stays</Text>
-      {candidates.map((c) => {
-        const isSelected = selected?.stay.id === c.stay.id;
-        const isSaved = saved.includes(c.stay.id);
-        const isCompare = isInComparison(c.stay.id);
+      {candidates.map((c, idx) => {
+        const sid = c?.stay?.id ?? `fallback-${idx}`;
+        const stayName = c?.stay?.name ?? 'Unnamed stay';
+        const stayCity = c?.stay?.city ?? 'Unknown city';
+        const isVerified = Boolean(c?.stay?.verified);
+        const priceNightly = typeof c?.nightly === 'number' ? c.nightly : 0;
+        const accommodationTotal = typeof c?.accommodationCost === 'number' ? c.accommodationCost : priceNightly * (nights || 2);
+        const labels = Array.isArray(c?.labels) ? c.labels : [];
+        const reasons = Array.isArray(c?.reasons) ? c.reasons : [];
+        const missingOptional = Array.isArray(c?.missingOptional) ? c.missingOptional : [];
+        const matchedOptional = Array.isArray(c?.matchedOptional) ? c.matchedOptional : [];
+        const score = typeof c?.score === 'number' ? c.score : 0;
+        const isSelected = selectedId === sid;
+        const isSaved = saved.includes(sid);
+        const isCompare = isInComparison(sid);
+
         return (
-          <View key={c.stay.id} style={[styles.stayCard, isSelected && styles.stayCardSelected]}>
-            <StayImage uri={c.stay.image} color={c.stay.color} style={styles.stayImage} />
+          <View key={sid} style={[styles.stayCard, isSelected && styles.stayCardSelected]}>
+            <StayImage uri={c?.stay?.image ?? undefined} color={c?.stay?.color} style={styles.stayImage} />
             <View style={styles.stayBody}>
               <View style={styles.labelRow}>
-                {c.labels.map((label) => (
+                {labels.map((label) => (
                   <View key={label} style={styles.labelChip}><Text style={styles.labelChipText}>{label}</Text></View>
                 ))}
-                {c.stay.verified && <Text style={styles.verified}>Verified</Text>}
+                {isVerified && <Text style={styles.verified}>Verified</Text>}
               </View>
-              <Text style={styles.stayName}>{c.stay.name}</Text>
-              <Text style={styles.body}>{c.stay.city}</Text>
-              <Text style={styles.price}>{formatPula(c.nightly)} / night · {formatPula(c.accommodationCost)} for {nights} night{nights === 1 ? '' : 's'}</Text>
-              <Text style={styles.hint}>
-                {c.stay.rating !== undefined && c.stay.ratings ? `Rated ${c.stay.rating.toFixed(1)}/5 from ${c.stay.ratings} review${c.stay.ratings === 1 ? '' : 's'}` : 'No reviews yet'}
-              </Text>
-              <Text style={styles.match}>Match score {Math.round(c.score * 100)}%</Text>
-              {c.reasons.slice(0, 3).map((reason) => <Text key={reason} style={styles.reason}>• {reason}</Text>)}
-              {c.missingOptional.length > 0 && (
-                <Text style={styles.hint}>Not listed: {c.missingOptional.join(', ')}</Text>
+              <Text style={styles.stayName}>{stayName}</Text>
+              <Text style={styles.body}>{stayCity}</Text>
+              <Text style={styles.price}>{formatPula(priceNightly)} / night · {formatPula(accommodationTotal)} for {nights} night{nights === 1 ? '' : 's'}</Text>
+              <Text style={styles.hint}>{c?.stay?.rating !== undefined && c?.stay?.ratings ? `Rated ${c.stay.rating.toFixed(1)}/5 from ${c.stay.ratings} review${c.stay.ratings === 1 ? '' : 's'}` : 'No reviews yet'}</Text>
+              <Text style={styles.match}>Match score {Math.round(score * 100)}%</Text>
+              {reasons.slice(0, 3).map((reason) => <Text key={reason} style={styles.reason}>• {reason}</Text>)}
+              {missingOptional.length > 0 && (
+                <Text style={styles.hint}>Not listed: {missingOptional.join(', ')}</Text>
               )}
               <View style={styles.actions}>
-                <Pressable onPress={() => setChoice(c.stay.id)} accessibilityRole="button" style={[styles.actionPrimary, isSelected && styles.actionActive]}>
+                <Pressable onPress={() => setChoice(sid)} accessibilityRole="button" style={[styles.actionPrimary, isSelected && styles.actionActive]}>
                   <Text style={[styles.actionPrimaryText, isSelected && styles.actionActiveText]}>{isSelected ? 'Selected for my trip' : 'Use for my trip'}</Text>
                 </Pressable>
-                <Pressable onPress={() => router.push({ pathname: '/details', params: { id: c.stay.id } })} accessibilityRole="button" style={styles.action}>
+                <Pressable onPress={() => router.push({ pathname: '/details', params: { id: sid } })} accessibilityRole="button" style={styles.action}>
                   <Text style={styles.actionText}>Details</Text>
                 </Pressable>
-                <Pressable onPress={() => toggleFavourite(c.stay)} accessibilityRole="button" accessibilityState={{ selected: isSaved }} style={styles.action}>
-                  <Text style={styles.actionText}>{isSaved ? 'Saved' : 'Save'}</Text>
+                <Pressable onPress={() => toggleFavourite(c?.stay ?? {})} accessibilityRole="button" accessibilityState={{ selected: saved.includes(sid) }} style={styles.action}>
+                  <Text style={styles.actionText}>{saved.includes(sid) ? 'Saved' : 'Save'}</Text>
                 </Pressable>
-                <Pressable onPress={() => compare(c.stay)} accessibilityRole="button" style={styles.action}>
+                <Pressable onPress={() => compare(c?.stay ?? {})} accessibilityRole="button" style={styles.action}>
                   <Text style={styles.actionText}>{isCompare ? 'In comparison' : 'Compare'}</Text>
                 </Pressable>
               </View>
